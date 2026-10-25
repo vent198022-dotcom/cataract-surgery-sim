@@ -27,7 +27,14 @@ export class StepController {
 
   setRoute(route) { this.route = route; }
 
+  // 外部直接跳步：先停止示範，避免示範的後續事件送進新步驟
   goTo(index) {
+    this.stopDemo();
+    this.enterStep(index);
+  }
+
+  // 真正切換步驟（示範內部也用這個，不會中斷示範）
+  enterStep(index) {
     this.current?.exit(this.ctx);
     this.index = Math.max(0, Math.min(index, this.ids.length - 1));
     const state = createInitialState(this.route);
@@ -47,13 +54,15 @@ export class StepController {
   restart() { this.stopDemo(); this.goTo(this.index); }
 
   startDemo(all = false) {
+    this.enterStep(all ? 1 : this.index);
     this.demoAll = all;
-    this.goTo(all ? 1 : this.index);
     this.playCurrent();
   }
 
   stopDemo() {
     if (!this.demo && !this.demoAll) return;
+    // 示範若停在按住中途，補一個放開事件，避免器械跟著指標移動
+    if (this.demo) this.current?.pointerUp({ x: 0, y: this.current.workY, z: 0 }, this.ctx);
     this.demo = null;
     this.demoAll = false;
     this.onChange(this);
@@ -72,7 +81,9 @@ export class StepController {
   }
 
   dispatch(type, point) {
-    this.current?.[HANDLERS[type]](point, this.ctx);
+    const handler = HANDLERS[type];
+    if (!handler) return;
+    this.current?.[handler](point, this.ctx);
   }
 
   update(dt) {
@@ -88,9 +99,13 @@ export class StepController {
     this.waited += dt;
     if (!(complete ? this.waited > ADVANCE_DELAY : this.waited > STUCK_TIMEOUT)) return;
     if (!this.demoAll) { this.stopDemo(); return; }
-    const last = this.ids.length - 1;
-    this.goTo(this.index + 1);
-    if (this.index === last) this.stopDemo();
-    else this.playCurrent();
+    const next = this.index + 1;
+    if (next === this.ids.length - 1) {
+      this.stopDemo();
+      this.enterStep(next);
+    } else {
+      this.enterStep(next);
+      this.playCurrent();
+    }
   }
 }

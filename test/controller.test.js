@@ -17,7 +17,7 @@ function setup() {
       update() {},
       pointerDown(p) { log.push(`down:${id}:${p.x}`); },
       pointerMove() {},
-      pointerUp() {},
+      pointerUp() { log.push(`up:${id}`); },
       isComplete() { return this.done; },
       skip: s => { s.visited = [...(s.visited ?? []), id]; },
       demoPath: () => [],
@@ -80,10 +80,41 @@ test('completion change triggers onChange', () => {
 });
 
 test('demo all walks every step and stops at done', () => {
-  const { c, steps } = setup();
+  const { c, steps, log } = setup();
   for (const s of Object.values(steps)) s.done = true;
   c.startDemo(true);
   for (let i = 0; i < 40; i++) c.update(0.5);
   assert.equal(c.step.id, 'done');
   assert.equal(c.demoing, false);
+  const entered = log.filter(e => e.startsWith('enter:'));
+  assert.deepEqual(entered, ROUTES.classic.slice(1).map(id => `enter:${id}`));
+});
+
+test('direct goTo stops a running demo so its later events do not leak into the new step', () => {
+  const { c, steps, log } = setup();
+  c.goTo(1);
+  steps.incision.demoPath = () => [{ t: 5, type: 'down', x: 9, z: 0 }];
+  c.startDemo(false);
+  c.goTo(2);
+  for (let i = 0; i < 12; i++) c.update(0.5);
+  assert.ok(!log.includes('down:capsulorhexis:9'));
+  assert.equal(c.demoing, false);
+});
+
+test('stopDemo mid-drag releases the held pointer on the current step', () => {
+  const { c, steps, log } = setup();
+  c.goTo(1);
+  steps.incision.demoPath = () => [{ t: 0, type: 'down', x: 1, z: 0 }];
+  c.startDemo(false);
+  c.update(0.1);
+  assert.ok(log.includes('down:incision:1'));
+  c.stopDemo();
+  assert.ok(log.includes('up:incision'));
+  assert.equal(c.demoing, false);
+});
+
+test('unknown pointer type is ignored', () => {
+  const { c } = setup();
+  c.goTo(1);
+  assert.doesNotThrow(() => c.pointer('wheel', { x: 0, y: 0, z: 0 }));
 });

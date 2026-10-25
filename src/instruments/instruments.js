@@ -103,18 +103,6 @@ export class Instrument {
     this.object.quaternion.setFromUnitVectors(UP, dir.set(d.x, d.y, d.z));
   }
 
-  // 觸控時手指按在握柄上：回傳「握柄落在 (x, z)」時尖端該在的位置（只算水平面），
-  // 尖端在手指前方 dist 毫米，不會被手指擋住
-  tipForGrip(x, z, dist) {
-    const a = this.anchor;
-    // pivot：握柄在尖端往切口的方向；aim：握柄在尖端往外（遠離 anchor）的方向
-    const dx = this.mode === 'pivot' ? a.x - x : x - a.x;
-    const dz = this.mode === 'pivot' ? a.z - z : z - a.z;
-    const len = Math.hypot(dx, dz);
-    if (len < 1e-6) return { x, z };
-    return { x: x - (dx / len) * dist, z: z - (dz / len) * dist };
-  }
-
   show() { this.object.visible = true; this.setOpacity(1); return this; }
   hide() { this.object.visible = false; return this; }
 

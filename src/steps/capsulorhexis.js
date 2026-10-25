@@ -208,7 +208,7 @@ export function createCapsulorhexisStep({ scene, eye, tools, ui, content }) {
 
   return baseStep({
     id: 'capsulorhexis',
-    gripTool: forceps,  // 觸控時手指拖的是這支器械的握柄
+    gripTool: forceps,  // 觸控相對移動時跟著手指平移的器械
     workY: CAPSULE_Y,
     enter(ctx) {
       state = ctx.state;

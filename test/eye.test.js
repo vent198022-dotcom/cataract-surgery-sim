@@ -94,15 +94,3 @@ test('bevelIncision: 130 degrees undercuts outward at 130 degrees to the central
   assert.ok(Math.abs(angle - 130) < 0.5, `angle ${angle}`);
   assert.ok(b130.inner[1] < b130.outer[1]);  // 往組織深處走
 });
-
-test('tipForGrip keeps the tip ahead of the finger along the instrument', async () => {
-  const { Instrument } = await import('../src/instruments/instruments.js');
-  const THREE = await import('three');
-  const tool = new Instrument(new THREE.Group());
-  tool.pivot({ x: 5.5, y: 10.8, z: 0 });                 // 從右側切口進入：握柄在尖端右邊
-  const t = tool.tipForGrip(3, 0, 1.5);
-  assert.ok(Math.abs(t.x - 1.5) < 1e-9 && Math.abs(t.z) < 1e-9);
-  tool.aim({ x: 0, y: 7, z: 0 });                        // 眼外瞄準中心：握柄在尖端外側
-  const u = tool.tipForGrip(10, 0, 2);
-  assert.ok(Math.abs(u.x - 8) < 1e-9 && Math.abs(u.z) < 1e-9);
-});

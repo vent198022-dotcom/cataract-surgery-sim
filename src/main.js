@@ -10,7 +10,6 @@ import { otherRoute } from './core/routes.js';
 import { createSteps } from './steps/index.js';
 
 const content = window.CONTENT;
-const GRIP_PX = 70;  // 觸控時尖端與手指的距離（像素）
 const NO_POINT = { x: 0, y: 0, z: 0 };
 
 function webglAvailable() {
@@ -143,25 +142,32 @@ function start() {
     controller.pointer('up', lastPoint);
   }
 
-  function aimRay(e, offsetX = 0) {
+  function aimRay(e) {
     const r = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX + offsetX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, views.camera);
   }
-  function planeHit(e, offsetX = 0) {
-    aimRay(e, offsetX);
+  function planeHit(e) {
+    aimRay(e);
     plane.constant = -controller.step.workY;
     return raycaster.ray.intersectPlane(plane, hit) ? { x: hit.x, y: hit.y, z: hit.z } : null;
   }
-  // 觸控：手指按的是器械握柄，尖端在手指前方約 GRIP_PX 像素，才不會被手指擋住（滑鼠游標很細，維持指哪打哪）
+  // 觸控採「觸控板式」相對移動：按下時器械不跳到手指下，手指移多少器械就平移多少，手指可放在旁邊不擋刀尖；
+  // 每次移動後依器械實際位置重新對齊，器械被夾限或被動畫帶走時不會累積空轉距離。滑鼠維持指哪打哪
+  let grip = null;  // 器械尖端相對手指的水平位移 { dx, dz }
+  const relative = e => e.pointerType !== 'mouse' && controller.step.gripTool;
   function workPoint(e) {
     const p = planeHit(e);
-    const tool = controller.step.gripTool;
-    if (!p || !tool || e.pointerType === 'mouse') return p;
-    const q = planeHit(e, GRIP_PX);
-    if (!q) return p;
-    const tip = tool.tipForGrip(p.x, p.z, Math.hypot(q.x - p.x, q.z - p.z));
-    return { x: tip.x, y: p.y, z: tip.z };
+    if (!p || !relative(e)) return p;
+    const tip = controller.step.gripTool.tip;
+    if (!grip) grip = { dx: tip.x - p.x, dz: tip.z - p.z };
+    return { x: p.x + grip.dx, y: p.y, z: p.z + grip.dz };
+  }
+  function regrip(e) {
+    if (!grip || !relative(e)) return;
+    const p = planeHit(e);
+    const tip = controller.step.gripTool.tip;
+    if (p) grip = { dx: tip.x - p.x, dz: tip.z - p.z };
   }
   function pickLayer(e) {
     aimRay(e);
@@ -175,6 +181,7 @@ function start() {
     if (views.mode !== 'microscope' || views.inspecting) return;
     try { canvas.setPointerCapture(e.pointerId); } catch { /* 指標已不存在時忽略 */ }
     pressed = true;
+    grip = null;
     const p = workPoint(e);
     if (p) {
       lastPoint = p;
@@ -187,6 +194,7 @@ function start() {
     if (p) {
       lastPoint = p;
       controller.pointer('move', p);
+      regrip(e);
     }
   });
   canvas.addEventListener('pointerup', e => {
@@ -195,6 +203,7 @@ function start() {
     pressed = false;  // 按住期間若換了步驟或視角，放開時也要清除
     if (views.mode === 'microscope') {
       if (wasPressed) controller.pointer('up', workPoint(e) ?? lastPoint);
+      grip = null;
       return;
     }
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) pickLayer(e);

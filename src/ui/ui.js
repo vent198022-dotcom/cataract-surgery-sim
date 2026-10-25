@@ -138,9 +138,15 @@ export function createUI(content, handlers) {
     },
 
     // 剖面示意圖（SVG 字串）；null 收起
-    showDiagram(svg) {
+    showDiagram(svg, caption) {
       const el = $('diagram');
       el.innerHTML = svg ?? '';
+      if (svg && caption) {
+        const p = document.createElement('p');
+        p.className = 'caption';
+        p.textContent = caption;
+        el.appendChild(p);
+      }
       el.hidden = !svg;
     },
 

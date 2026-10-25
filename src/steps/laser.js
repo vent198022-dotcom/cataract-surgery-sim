@@ -175,8 +175,8 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
       once('main', T.mainEnd, () => {
         state.incisions.main = true;
         eye.applyState(state);
-        ui.showHint(content.hints.bevel, 4000);
-        ui.showDiagram(bevelDiagramSVG(content.ui));
+        // 說明文字放進剖面圖卡片裡，不另外跳提示框（手機上提示框會蓋住圖）
+        ui.showDiagram(bevelDiagramSVG(content.ui), content.hints.bevel);
       });
       once('fly3', T.sideFly, () => views.flyTo(CAM.sideClose, 0.8));
       once('side', T.sideEnd, () => {

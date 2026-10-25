@@ -101,7 +101,12 @@ export function createChopStep({ scene, eye, tools, ui, content }) {
       tracker.lift();
       move(p);
     },
-    pointerMove(p) { if (dragging && chopping()) move(p); },
+    // main.js 只在按住時轉送 move；動畫結束時若仍按著，直接開始第二刀
+    pointerMove(p) {
+      if (!chopping()) return;
+      if (!dragging) { dragging = true; tracker.lift(); }
+      move(p);
+    },
     pointerUp() {
       dragging = false;
       tracker?.lift();

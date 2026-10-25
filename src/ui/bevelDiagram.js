@@ -45,16 +45,16 @@ export function bevelDiagramSVG(text, alphaDeg = 130, rOuter = 5.5) {
   const largeArc = alphaDeg > 180 ? 1 : 0;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H + 40}" role="img" aria-label="${esc(text.bevelTitle)}">
-  <text x="${W / 2}" y="24" text-anchor="middle" font-size="22" font-weight="bold" fill="#1d2a36">${esc(text.bevelTitle)}</text>
+  <text x="${W / 2}" y="26" text-anchor="middle" font-size="24" font-weight="bold" fill="#1d2a36">${esc(text.bevelTitle)}</text>
   <g transform="translate(0,36)">
     <polygon points="${sclera}" fill="#f4efe4" stroke="#c9bfae" stroke-width="2"/>
     <polygon points="${cornea}" fill="#cfe9f7" stroke="#6aa9c9" stroke-width="2"/>
     <line x1="${sx(outer[0])}" y1="${sy(outer[1])}" x2="${sx(inner[0])}" y2="${sy(inner[1])}" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
     <line x1="${sx(outer[0])}" y1="${sy(outer[1])}" x2="${sx(inner[0])}" y2="${sy(inner[1])}" stroke="#8b1e1e" stroke-width="6" stroke-linecap="round"/>
     <path d="M ${pt(...a0)} A ${rad * PX} ${rad * PX} 0 ${largeArc} 0 ${pt(...a1)}" fill="none" stroke="#e08a00" stroke-width="3"/>
-    <text x="${sx(label[0] - 0.05 * mid[0] / midLen)}" y="${sy(label[1])}" text-anchor="end" font-size="20" font-weight="bold" fill="#b86e00">${esc(text.bevelAngle)}</text>
-    <text x="8" y="${H - 10}" font-size="16" fill="#5b6b7a">← ${esc(text.bevelCenter)}</text>
-    <text x="${sx(LIMBUS_R)}" y="${H - 10}" font-size="16" fill="#5b6b7a">${esc(text.bevelLimbus)} →</text>
+    <text x="${sx(label[0] - 0.05 * mid[0] / midLen)}" y="${sy(label[1])}" text-anchor="end" font-size="26" font-weight="bold" fill="#b86e00">${esc(text.bevelAngle)}</text>
+    <text x="8" y="${H - 10}" font-size="21" fill="#5b6b7a">← ${esc(text.bevelCenter)}</text>
+    <text x="${sx(LIMBUS_R) - 20}" y="${H - 10}" font-size="21" fill="#5b6b7a">${esc(text.bevelLimbus)} →</text>
   </g>
 </svg>`;
 }

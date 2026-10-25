@@ -181,6 +181,7 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
       once('fly3', T.sideFly, () => views.flyTo(CAM.sideClose, 0.8));
       once('side', T.sideEnd, () => {
         views.home(1.2);
+        ui.showDiagram(null);  // 鏡頭回到正上方就收起剖面圖，不擋眼球
         SKIPS.laser(state);
         eye.applyState(state);
       });

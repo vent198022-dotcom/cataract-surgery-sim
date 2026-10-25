@@ -95,6 +95,8 @@ export function createLaserStep({ scene, eye, tools, ui, content }) {
       }
     },
     isComplete() { return done; },
+    // 自動播放步驟：放一個無作用的事件撐到動畫結束，自動示範才不會在 5 秒時判定卡住而跳過
+    demoPath() { return [{ t: T.liftEnd, type: 'move', x: 0, z: 0 }]; },
     skip: SKIPS.laser,
   });
 }

@@ -91,6 +91,7 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
       tipTo(c.x, c.z);
       if (dist2D(c.x, c.z, disc.position.x, disc.position.z) < GRAB_RADIUS) {
         grabbed = true;
+        tweens.clear();  // 取消剛放開時的回彈動畫，避免和拖曳互搶位置
         move(p);
       } else {
         ui.showHint(content.hints.grabDisc);

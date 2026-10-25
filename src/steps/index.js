@@ -2,6 +2,7 @@ import { baseStep } from './common.js';
 import { SKIPS } from '../core/skips.js';
 import { createIncisionStep } from './incision.js';
 import { createCapsulorhexisStep } from './capsulorhexis.js';
+import { createChopStep } from './chop.js';
 
 const orbitStep = id => baseStep({ id, view: 'orbit', isComplete: () => true, skip: SKIPS[id] });
 // Task 7–12 會逐一把 pendingStep 換成真正的步驟
@@ -12,7 +13,7 @@ export function createSteps(deps) {
     intro: orbitStep('intro'),
     incision: createIncisionStep(deps),
     capsulorhexis: createCapsulorhexisStep(deps),
-    chop: pendingStep('chop'),
+    chop: createChopStep(deps),
     laser: pendingStep('laser'),
     capsuleRemoval: pendingStep('capsuleRemoval'),
     phaco: pendingStep('phaco'),

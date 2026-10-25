@@ -7,7 +7,7 @@ import { INCISIONS } from '../eye/anatomy.js';
 import { createMarker } from '../eye/guides.js';
 
 const BLADE_Y = 11.4;
-const REST = { x: 10, z: 5 };
+const REST = { x: 6, z: 4.2 };  // 起始位置要在直立手機畫面內看得到
 const HIT_RADIUS = 1.0;
 const AIM = { x: 0, y: 7, z: 0 };
 

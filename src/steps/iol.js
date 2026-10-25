@@ -6,7 +6,7 @@ import { dragEvents, linePoints } from '../core/demo.js';
 import { INCISIONS, IOL_Y } from '../eye/anatomy.js';
 
 const WORK_Y = 11.0;
-const REST = { x: 10, z: 3 };
+const REST = { x: 6.6, z: 2.6 };  // 起始位置要在直立手機畫面內看得到
 const AIM = { x: 0, y: 6, z: 0 };
 const REACH = 1.2;
 const CORNEA_EDGE = 5.6;  // 推注器尖端不能穿過角膜中央

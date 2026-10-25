@@ -58,6 +58,7 @@ export function createArcTracker(radius, bins = 36, tolerance = 0.8) {
 export function createLineTracker(a, b, bins = 20, tolerance = 0.9) {
   const dx = b.x - a.x, dz = b.z - a.z, len2 = dx * dx + dz * dz;
   return strokeTracker(bins, (x, z) => {
+    if (len2 < 1e-9) return null;  // 兩端點重合時無法定義線段，避免 t 為 NaN
     const t = ((x - a.x) * dx + (z - a.z) * dz) / len2;
     if (t < 0 || t > 1) return null;
     if (Math.hypot(x - (a.x + dx * t), z - (a.z + dz * t)) > tolerance) return null;

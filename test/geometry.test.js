@@ -49,3 +49,10 @@ test('line tracker covers bins along the segment only', () => {
   t.add(0.5, 3);
   assert.equal(t.coverage(), 1);
 });
+
+test('line tracker with coincident endpoints never reports hits', () => {
+  const t = createLineTracker({ x: 1, z: 1 }, { x: 1, z: 1 }, 20, 0.9);
+  assert.equal(t.add(1, 1), false);
+  assert.equal(t.add(1.5, 1), false);
+  assert.equal(t.coverage(), 0);
+});

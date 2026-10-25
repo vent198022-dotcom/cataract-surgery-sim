@@ -18,7 +18,10 @@ export class Tweens {
       const k = tween.duration > 0 ? tween.t / tween.duration : 1;
       tween.onUpdate(k);
       if (k >= 1) {
-        this.list.splice(this.list.indexOf(tween), 1);
+        // onUpdate 內可能已 clear()（或再 add()），此時不可誤刪其他補間，也不再呼叫 onDone
+        const i = this.list.indexOf(tween);
+        if (i < 0) continue;
+        this.list.splice(i, 1);
         tween.onDone?.();
       }
     }

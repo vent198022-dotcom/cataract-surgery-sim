@@ -34,3 +34,17 @@ test('chained tween starts on the next update, clear stops everything', () => {
   tw.update(1);
   assert.deepEqual(log, [0, 0.5]);
 });
+
+test('clear + add inside the final onUpdate keeps the new tween and skips onDone', () => {
+  const tw = new Tweens();
+  let done = 0;
+  tw.add(1, k => {
+    if (k >= 1) {
+      tw.clear();
+      tw.add(1, () => {});
+    }
+  }, () => done++);
+  tw.update(1);
+  assert.equal(tw.busy, true);
+  assert.equal(done, 0);
+});

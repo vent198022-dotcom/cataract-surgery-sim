@@ -33,8 +33,10 @@ export function createCapsulorhexisStep({ scene, eye, tools, ui, content }) {
         const e = ease(k);
         const p = lerp3(grab, out, e);
         forceps.setTip(Math.min(p.x, INCISIONS.main.x - 0.5), Math.min(p.y, 10.5), p.z);  // 尖端留在切口內
-        disc.position.set(p.x - grab.x, p.y - grab.y, p.z - grab.z);
-        disc.scale.setScalar(1 - 0.7 * e);
+        // 囊片幾何在眼球座標原點，縮放會往原點縮；用 p - s*grab 讓夾住點始終跟著 p
+        const s = 1 - 0.7 * e;
+        disc.scale.setScalar(s);
+        disc.position.set(p.x - s * grab.x, p.y - s * grab.y, p.z - s * grab.z);
       }, () => {
         state.capsuleOpen = true;
         eye.applyState(state);
@@ -83,6 +85,7 @@ export function createCapsulorhexisStep({ scene, eye, tools, ui, content }) {
     pointerDown(p) {
       if (finishing) return;
       dragging = true;
+      offPath = 0;
       tracker.lift();
       move(p);
     },

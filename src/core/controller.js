@@ -93,6 +93,7 @@ export class StepController {
     const complete = this.current.isComplete();
     if (complete !== this.complete) {
       this.complete = complete;
+      this.waited = 0;  // 完成後才開始計停留時間，避免示範播完後才完成的步驟一閃而過
       this.onChange(this);
     }
     if (!this.demo?.finished) return;

@@ -22,6 +22,7 @@ export function createUI(content, handlers) {
     prev: button(text.prev, () => handlers.prev()),
     restart: button(text.restart, () => handlers.restart()),
     demo: button(text.demoStep, () => (demoing ? handlers.stopDemo() : handlers.demoStep())),
+    inspect: button(text.inspect, () => handlers.toggleInspect(), 'toggle'),
     demoAll: button(text.demoAll, () => handlers.demoAll()),
     labels: button(text.labels, () => handlers.toggleLabels(), 'toggle'),
     resetView: button(text.resetView, () => handlers.resetView()),
@@ -54,7 +55,7 @@ export function createUI(content, handlers) {
   let shownStep = null;
 
   return {
-    setStep({ route, ids, index, complete, demoing: isDemoing, view }) {
+    setStep({ route, ids, index, complete, demoing: isDemoing, view, cinematic = false }) {
       demoing = isDemoing;
       const id = ids[index];
       const step = content.steps[id];
@@ -101,6 +102,8 @@ export function createUI(content, handlers) {
       btn.demo.textContent = isDemoing ? text.stop : text.demoStep;
       btn.demo.disabled = orbit && !isDemoing;
       btn.demoAll.disabled = isDemoing;
+      btn.inspect.hidden = orbit;
+      btn.inspect.disabled = isDemoing || cinematic;
       btn.labels.hidden = !orbit;
       btn.resetView.hidden = !orbit;
       if (stepChanged) {
@@ -112,12 +115,17 @@ export function createUI(content, handlers) {
 
     setLabelsOn(on) { btn.labels.classList.toggle('on', on); },
 
-    showHint(message) {
+    setInspect(on) {
+      btn.inspect.textContent = on ? text.inspectDone : text.inspect;
+      btn.inspect.classList.toggle('on', on);
+    },
+
+    showHint(message, ms = 2600) {
       const el = $('hint');
       el.textContent = message;
       el.hidden = false;
       clearTimeout(hintTimer);
-      hintTimer = setTimeout(() => { el.hidden = true; }, 2600);
+      hintTimer = setTimeout(() => { el.hidden = true; }, ms);
     },
 
     showLayer(id) {

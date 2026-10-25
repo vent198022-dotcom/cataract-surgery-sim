@@ -104,6 +104,7 @@ window.CONTENT = {
     cleared: '已清除 {n}/4',
     chopOther: '用同樣方法把另一半也劈開',
     stepDone: '完成！請按「下一步」',
+    inspect: '用手指拖動可轉動眼球，兩指可放大縮小；按「回到操作」繼續手術',
   },
   ui: {
     insetLabel: '剖面圖',
@@ -113,6 +114,8 @@ window.CONTENT = {
     next: '下一步',
     demoStep: '示範這一步',
     demoAll: '從頭示範',
+    inspect: '旋轉觀看',
+    inspectDone: '回到操作',
     stop: '停止示範',
     labels: '名稱標籤',
     resetView: '視角重置',

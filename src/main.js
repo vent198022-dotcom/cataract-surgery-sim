@@ -51,6 +51,14 @@ function start() {
     resetView: () => views.resetOrbit(),
     chooseRoute: route => { controller.setRoute(route); controller.goTo(1); },
     otherRoute: () => { controller.setRoute(otherRoute(controller.route)); controller.goTo(1); },
+    toggleInspect: () => {
+      views.setInspect(!views.inspecting);
+      ui.setInspect(views.inspecting);
+      if (views.inspecting) {
+        releasePress();  // 進入旋轉觀看時，若器械還在按住中，先放開
+        ui.showHint(content.hints.inspect, 4000);
+      }
+    },
   });
   if (!webglAvailable()) {
     ui.fatal(content.ui.noWebGL);
@@ -94,14 +102,25 @@ function start() {
     ui.setInsetRect(views.mode === 'microscope' ? views.insetRect(w, h) : null);
   }
 
-  const deps = { scene, eye, tools, ui, content, particles };
+  const deps = { scene, eye, tools, ui, content, particles, views };
+  let stepKey = null;  // 上一次的 route:index，換步驟時才重置旋轉觀看
+  let wasDemoing = false;
   controller = new StepController({
     steps: createSteps(deps),
     ctx: { ...deps, state: null },
     onChange: c => {
       views.setMode(c.step.view);
+      const key = `${c.route}:${c.index}`;
+      if (key !== stepKey) {
+        stepKey = key;
+        views.setInspect(false);
+        if (c.step.view === 'microscope') views.home(0);
+      }
+      if (c.demoing && !wasDemoing) views.setInspect(false);
+      wasDemoing = c.demoing;
       layout();
-      ui.setStep({ route: c.route, ids: c.ids, index: c.index, complete: c.complete, demoing: c.demoing, view: c.step.view });
+      ui.setStep({ route: c.route, ids: c.ids, index: c.index, complete: c.complete, demoing: c.demoing, view: c.step.view, cinematic: c.step.cinematic === true });
+      ui.setInspect(views.inspecting);
     },
   });
 
@@ -115,6 +134,13 @@ function start() {
   let downAt = null;
   let pressed = false;  // 顯微鏡視角下是否按住（器械只在按住時跟著移動）
   let lastPoint = NO_POINT;
+
+  // 放開按住中的器械（旋轉觀看開始時用）
+  function releasePress() {
+    if (!pressed) return;
+    pressed = false;
+    controller.pointer('up', lastPoint);
+  }
 
   function aimRay(e) {
     const r = canvas.getBoundingClientRect();
@@ -135,7 +161,7 @@ function start() {
   canvas.addEventListener('pointerdown', e => {
     if (!e.isPrimary || e.button !== 0) return;
     downAt = { x: e.clientX, y: e.clientY };
-    if (views.mode !== 'microscope') return;
+    if (views.mode !== 'microscope' || views.inspecting) return;
     canvas.setPointerCapture(e.pointerId);
     pressed = true;
     const p = workPoint(e);
@@ -145,7 +171,7 @@ function start() {
     }
   });
   canvas.addEventListener('pointermove', e => {
-    if (views.mode !== 'microscope' || !pressed) return;
+    if (views.mode !== 'microscope' || views.inspecting || !pressed) return;
     const p = workPoint(e);
     if (p) {
       lastPoint = p;
@@ -180,6 +206,7 @@ function start() {
       const dt = Math.min(clock.getDelta(), 0.05);
       controller.update(dt);
       particles.update(dt);
+      views.update(dt);
 
       const w = stage.clientWidth, h = stage.clientHeight;
       const orbit = views.mode === 'orbit';

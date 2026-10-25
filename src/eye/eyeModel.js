@@ -4,9 +4,14 @@ import { PROFILES, LENS, CAPSULE_OPENING, CAPSULE_Y, IOL_Y, INCISIONS, LABEL_ANC
 import { nucleusLayout } from './layout.js';
 import { makeRevolvedPart, Part, inCutRegion } from './revolve.js';
 import { createMaterials, BASE_CORTEX_OPACITY } from './materials.js';
+import { createCapsuleFlap } from './capsuleFlap.js';
 import { applyPlanarUV, scleraVesselTexture, redReflexTexture, glintTexture } from './textures.js';
 
 const PIECE_CENTER_R = 1.3;  // 每塊核的重心離光軸距離
+const STAIN_BASE = new THREE.Color(0xd6efff);   // 囊膜原色
+const STAIN_BLUE = new THREE.Color(0x4f86d9);   // 台盼藍染色後
+const DISC_STAIN_OPACITY = 0.6;
+const BAG_STAIN_OPACITY = 0.3;
 
 function applyUVToMeshes(object, radius) {
   object.traverse(o => { if (o.isMesh) applyPlanarUV(o.geometry, radius); });
@@ -164,6 +169,11 @@ export function createEye(layers) {
     pieces.push({ outer, material, dir, centroid, present: true });
   }
 
+  // 撕囊時的前囊片（會折起的薄膜）；與前囊片共用材質，染色時一起變色
+  const capsuleFlap = createCapsuleFlap(M.capsuleDisc);
+  root.add(capsuleFlap.mesh);
+  const discBaseOpacity = M.capsuleDisc.opacity, bagBaseOpacity = M.capsule.opacity;
+
   const laserRing = new THREE.Mesh(new THREE.TorusGeometry(CAPSULE_OPENING, 0.05, 8, 96), M.laser);
   laserRing.rotation.x = Math.PI / 2;
   laserRing.position.y = CAPSULE_Y;
@@ -210,7 +220,7 @@ export function createEye(layers) {
   }
 
   const eye = {
-    root, parts, pieces, nucleusGroup, laserRing, incisionMarks, iol, labels, redReflex, glints,
+    root, parts, pieces, nucleusGroup, capsuleFlap, laserRing, incisionMarks, iol, labels, redReflex, glints,
 
     setCutaway(on) {
       cutaway = on;
@@ -240,6 +250,14 @@ export function createEye(layers) {
 
     setGlow(i, amount) { pieces[i].material.emissive.setRGB(amount * 0.5, amount * 0.35, 0); },
     setDiscGlow(amount) { M.capsuleDisc.emissive.setRGB(amount * 0.2, amount * 0.6, amount * 0.9); },
+    // 台盼藍染色：amount 0 = 透明囊膜、1 = 淡藍；可逆。囊袋本體只染一半
+    setCapsuleStain(amount) {
+      const a = Math.min(1, Math.max(0, amount));
+      M.capsuleDisc.color.copy(STAIN_BASE).lerp(STAIN_BLUE, a);
+      M.capsuleDisc.opacity = discBaseOpacity + (DISC_STAIN_OPACITY - discBaseOpacity) * a;
+      M.capsule.color.copy(STAIN_BASE).lerp(STAIN_BLUE, 0.5 * a);
+      M.capsule.opacity = bagBaseOpacity + (BAG_STAIN_OPACITY - bagBaseOpacity) * a;
+    },
     setCortexOpacity(opacity) { M.cortex.opacity = opacity; },
 
     applyState(s) {
@@ -249,6 +267,10 @@ export function createEye(layers) {
       parts.capsuleDisc.group.position.set(0, 0, 0);
       parts.capsuleDisc.group.scale.setScalar(1);
       eye.setDiscGlow(0);
+      capsuleFlap.reset();
+      capsuleFlap.mesh.visible = false;
+      // 古典路線撕囊後，剩下的囊膜維持藍色；飛秒路線不染色
+      eye.setCapsuleStain(s.route === 'classic' && s.capsuleOpen ? 1 : 0);
       laserRing.visible = s.laserDone && !s.capsuleOpen;
       pieces.forEach((p, i) => {
         p.present = s.pieces[i];

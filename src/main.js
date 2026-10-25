@@ -136,10 +136,10 @@ function start() {
   });
   canvas.addEventListener('pointerup', e => {
     if (!e.isPrimary) return;
+    const wasPressed = pressed;
+    pressed = false;  // 按住期間若換了步驟或視角，放開時也要清除
     if (views.mode === 'microscope') {
-      if (!pressed) return;
-      pressed = false;
-      controller.pointer('up', workPoint(e) ?? lastPoint);
+      if (wasPressed) controller.pointer('up', workPoint(e) ?? lastPoint);
       return;
     }
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) pickLayer(e);

@@ -50,12 +50,17 @@ export function createUI(content, handlers) {
 
   const progress = $('progress');
   let hintTimer = 0;
+  let shownStep = null;
 
   return {
     setStep({ route, ids, index, complete, demoing: isDemoing, view }) {
       demoing = isDemoing;
       const id = ids[index];
       const step = content.steps[id];
+      // 只有真的換步驟才收起說明框與提示；完成狀態改變也會呼叫 setStep，不能把「完成！」提示收掉
+      const stepKey = `${route}:${index}`;
+      const stepChanged = stepKey !== shownStep;
+      shownStep = stepKey;
 
       progress.replaceChildren(...ids.map((sid, i) => {
         const li = document.createElement('li');
@@ -97,9 +102,11 @@ export function createUI(content, handlers) {
       btn.demoAll.disabled = isDemoing;
       btn.labels.hidden = !orbit;
       btn.resetView.hidden = !orbit;
-      $('layer-info').hidden = true;
-      clearTimeout(hintTimer);
-      $('hint').hidden = true;  // 換步驟時收起上一步的提示
+      if (stepChanged) {
+        $('layer-info').hidden = true;
+        clearTimeout(hintTimer);
+        $('hint').hidden = true;
+      }
     },
 
     setLabelsOn(on) { btn.labels.classList.toggle('on', on); },

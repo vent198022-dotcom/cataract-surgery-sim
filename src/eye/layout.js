@@ -5,8 +5,9 @@ export const LASER_GAP = 0.1;
 
 export function nucleusLayout(s) {
   if (s.route === 'femto' && s.laserDone) return { quarter: LASER_GAP };
-  if (s.nucleusSplit >= 2) return { half: HALF_GAP, quarter: QUARTER_GAP, rotation: Math.PI / 2 };
-  if (s.nucleusSplit === 1) return { half: HALF_GAP, rotation: Math.PI / 2 };
+  const rotation = s.nucleusRotation ?? Math.PI / 2;  // 自由劈核後由劈核步驟記下實際角度
+  if (s.nucleusSplit >= 2) return { half: HALF_GAP, quarter: QUARTER_GAP, rotation };
+  if (s.nucleusSplit === 1) return { half: HALF_GAP, rotation };
   return {};
 }
 

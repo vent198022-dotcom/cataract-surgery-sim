@@ -33,6 +33,10 @@ test('nucleus layout follows state', () => {
   assert.deepEqual(nucleusLayout(s), { half: HALF_GAP, rotation: Math.PI / 2 });
   s.nucleusSplit = 2;
   assert.deepEqual(nucleusLayout(s), { half: HALF_GAP, quarter: QUARTER_GAP, rotation: Math.PI / 2 });
+  s.nucleusRotation = 1.2;
+  assert.deepEqual(nucleusLayout(s), { half: HALF_GAP, quarter: QUARTER_GAP, rotation: 1.2 });
+  s.nucleusSplit = 1;
+  assert.deepEqual(nucleusLayout(s), { half: HALF_GAP, rotation: 1.2 });
   const f = createInitialState('femto');
   f.laserDone = true;
   f.nucleusSplit = 2;

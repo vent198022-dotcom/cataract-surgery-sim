@@ -19,6 +19,7 @@ test('initial state: eye untouched', () => {
   assert.equal(s.capsuleOpen, false);
   assert.equal(s.laserDone, false);
   assert.equal(s.nucleusSplit, 0);
+  assert.equal(s.nucleusRotation, null);
   assert.deepEqual(s.pieces, [true, true, true, true]);
   assert.equal(s.cortex, true);
   assert.equal(s.iol, false);
@@ -62,7 +63,7 @@ test('content covers every step, layer and hint', () => {
   for (const id of ['cornea', 'anteriorChamber', 'iris', 'capsule', 'cortex', 'nucleus', 'zonules', 'ciliary', 'vitreous', 'retina', 'choroid', 'sclera', 'opticNerve', 'iol']) {
     assert.ok(c.layers[id]?.name && c.layers[id].desc, `layer ${id}`);
   }
-  for (const key of ['followLine', 'followCircle', 'moveToMarker', 'moveToPiece', 'grabDisc', 'pushInjector', 'cleared', 'chopOther', 'stepDone', 'inspect', 'bevel', 'tearTooWide', 'closeLoop']) assert.ok(c.hints[key], key);
+  for (const key of ['followLine', 'followCircle', 'moveToMarker', 'moveToPiece', 'grabDisc', 'pushInjector', 'cleared', 'chopOther', 'stepDone', 'inspect', 'bevel', 'tearTooWide', 'closeLoop', 'chopFromEdge']) assert.ok(c.hints[key], key);
   for (const key of ['prev', 'restart', 'next', 'demoStep', 'demoAll', 'stop', 'labels', 'resetView', 'inspect', 'inspectDone', 'chooseRoute', 'otherRoute', 'before', 'after', 'cloudy', 'noWebGL', 'insetLabel', 'streetSign', 'bevelTitle', 'bevelAngle', 'bevelCenter', 'bevelLimbus']) assert.ok(c.ui[key], key);
   assert.ok(c.routes.classic.name && c.routes.femto.name);
   assert.ok(c.routeNotes.femtoPhaco);

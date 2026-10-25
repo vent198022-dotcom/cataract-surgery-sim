@@ -1,38 +1,36 @@
 import * as THREE from 'three';
 import { nucleusTopY } from './anatomy.js';
 
-const SAMPLES = 24;
 const TUBE_RADIUS = 0.17;  // 比劈核器桿身（0.12）粗，拉的時候裂縫從桿身兩側露出來
 const RADIAL = 6;
 const crackMat = new THREE.MeshBasicMaterial({ color: 0x3d2610 });  // 不透明，保持深度寫入
 
-// 沿核表面的裂縫：worldA → worldB（只用 x / z），掛在 parent（核群組）上跟著核轉，
-// setProgress(k) 以 drawRange 從 A 端逐段長出
-export function createCrack(parent, worldA, worldB) {
-  parent.updateWorldMatrix(true, false);
-  const a = parent.worldToLocal(new THREE.Vector3(worldA.x, 9, worldA.z));
-  const b = parent.worldToLocal(new THREE.Vector3(worldB.x, 9, worldB.z));
-  const points = [];
-  for (let i = 0; i <= SAMPLES; i++) {
-    const t = i / SAMPLES;
-    const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-    points.push(new THREE.Vector3(x, nucleusTopY(Math.hypot(x, z)) + 0.03, z));
-  }
-  const geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), SAMPLES, TUBE_RADIUS, RADIAL, false);
-  const mesh = new THREE.Mesh(geometry, crackMat);
+// 沿核表面的裂縫：照一串世界座標點（只用 x / z）長出，掛在 parent（核群組）上跟著核轉。
+// setPoints(worldPoints) 在點數增加時重建圓管（至少 2 點才畫）
+export function createPathCrack(parent) {
+  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), crackMat);
   mesh.renderOrder = 3;
+  mesh.visible = false;
   parent.add(mesh);
-  const api = {
+  let built = 0;
+  return {
     mesh,
-    setProgress(k) {
-      const n = Math.floor(SAMPLES * Math.min(1, Math.max(0, k)));
-      geometry.setDrawRange(0, n * RADIAL * 6);
+    setPoints(worldPoints) {
+      if (worldPoints.length === built) return;
+      built = worldPoints.length;
+      if (worldPoints.length < 2) { mesh.visible = false; return; }
+      parent.updateWorldMatrix(true, false);
+      const local = worldPoints.map(p => {
+        const v = parent.worldToLocal(new THREE.Vector3(p.x, 9, p.z));
+        return new THREE.Vector3(v.x, nucleusTopY(Math.hypot(v.x, v.z)) + 0.03, v.z);
+      });
+      mesh.geometry.dispose();
+      mesh.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(local), Math.max(8, local.length * 4), TUBE_RADIUS, RADIAL, false);
+      mesh.visible = true;
     },
     dispose() {
       parent.remove(mesh);
-      geometry.dispose();
+      mesh.geometry.dispose();
     },
   };
-  api.setProgress(0);
-  return api;
 }

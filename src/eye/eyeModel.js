@@ -41,14 +41,19 @@ function makeRedReflex() {
   );
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.y = 5.0;
-  mesh.renderOrder = 0;
-  return mesh;
+  // three 先依「上層 Group 的 renderOrder」排序透明物件，所以要包一層 Group 才排得到囊膜、玻璃體之後；
+  // 否則會被它們洗成粉白色。核、虹膜會寫深度，仍能擋住它；角膜（5）與反光點（6）再畫在上面
+  const group = new THREE.Group();
+  group.renderOrder = 4;
+  group.add(mesh);
+  return group;
 }
 
 // 角膜頂端兩個同軸燈反光點
 function makeGlints() {
   const material = new THREE.MeshBasicMaterial({ map: glintTexture(), transparent: true, depthWrite: false, opacity: 0.85 });
   const group = new THREE.Group();
+  group.renderOrder = 6;
   for (const [x, z] of [[-0.6, -0.4], [0.7, -0.3]]) {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), material);
     mesh.rotation.x = -Math.PI / 2;
@@ -136,7 +141,8 @@ export function createEye(layers) {
   root.add(parts.scleraVessels.group);
 
   // 透明層由內往外畫
-  const order = { vitreous: 1, capsuleBag: 2, capsuleDisc: 2, cortex: 3, cornea: 5 };
+  // 前囊片排在紅反射（4）之後，俯視時才看得到（染色、發光）
+  const order = { vitreous: 1, capsuleBag: 2, cortex: 3, capsuleDisc: 4.5, cornea: 5 };
   for (const [key, value] of Object.entries(order)) parts[key].group.traverse(o => { o.renderOrder = value; });
 
   // 水晶體核：四塊各自是一個旋轉體扇形；outer 放在重心，方便縮放與移動

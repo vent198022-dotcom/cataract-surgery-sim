@@ -111,15 +111,15 @@ function paintCollarette(ctx, c, rng) {
   ctx.beginPath();
   for (let i = 0; i <= teeth * 2; i++) {
     const a = (i / (teeth * 2)) * TAU;
-    const r = rc + (i % 2 ? 7 : -7) + (rng() - 0.5) * 5;
+    const r = rc + (i % 2 ? 1 : -1) * (2 + rng() * 4) + (rng() - 0.5) * 4;  // 齒高不規則，較自然
     const x = c + r * Math.cos(a), y = c + r * Math.sin(a);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.strokeStyle = rgba(222, 184, 132, 0.6);
+  ctx.strokeStyle = rgba(214, 176, 126, 0.35);
   ctx.lineWidth = 3.5;
   ctx.stroke();
-  ctx.strokeStyle = rgba(244, 214, 168, 0.25);
+  ctx.strokeStyle = rgba(236, 204, 158, 0.12);
   ctx.lineWidth = 9;
   ctx.stroke();
   // 小環外側稍暗的睫狀區邊界
@@ -217,7 +217,7 @@ function paintVessel(ctx, c, rng, angle, rStart, rEnd, width, alpha, branches) {
   ctx.strokeStyle = rgba(184, 69, 63, alpha);
   ctx.lineCap = 'round';
   for (let r = rStart - step; r >= rEnd; r -= step) {
-    drift += (rng() - 0.5) * 0.0025;
+    drift = drift * 0.85 + (rng() - 0.5) * 0.012;  // 較彎曲的走向，避免像刮痕
     a += drift;
     const x = c + r * Math.cos(a), y = c + r * Math.sin(a);
     ctx.lineWidth = Math.max(0.8, width * (0.55 + 0.45 * ((r - rEnd) / total)));  // 靠近角膜緣變細
@@ -237,12 +237,12 @@ function paintVessel(ctx, c, rng, angle, rStart, rEnd, width, alpha, branches) {
 }
 
 function paintVessels(ctx, c, rng) {
-  const count = 14;
+  const count = 20;
   for (let i = 0; i < count; i++) {
     const angle = ((i + rng() * 0.8) / count) * TAU;
     const rStart = scleraPx(10.4 + rng() * 0.9);
-    const rEnd = scleraPx(6.25 + rng() * 0.6);
-    paintVessel(ctx, c, rng, angle, rStart, rEnd, 1 + rng() * 1.5, 0.35 + rng() * 0.25, 1 + Math.floor(rng() * 2));
+    const rEnd = scleraPx(6.25 + rng() * 1.6);
+    paintVessel(ctx, c, rng, angle, rStart, rEnd, 1.5 + rng() * 2, 0.22 + rng() * 0.22, 1 + Math.floor(rng() * 3));
   }
 }
 
@@ -285,8 +285,9 @@ export function redReflexTexture() {
   const size = 256, c = size / 2;
   const { canvas, ctx } = makeCanvas(size);
   ctx.fillStyle = radialGradient(ctx, c, c, 0, c, [
-    [0, '#ff8a3d'],
-    [0.85, '#a8321e'],
+    [0, '#ea5a1c'],
+    [0.6, '#c63a16'],
+    [0.85, '#8f2412'],
     [1, rgba(168, 50, 30, 0)],
   ]);
   ctx.fillRect(0, 0, size, size);

@@ -53,15 +53,15 @@ export const PROFILES = {
   capsuleDisc: shell(lensCurve(0, T_OPEN, 1.03), lensCurve(0, T_OPEN, 1.0)),
 };
 
-// 名稱標籤放在剖面上（x<0、z=0 的半平面）
+// 名稱標籤放在兩個切面上：x<0、z=0 的半平面，以及 x=0、z>0 的半平面（水晶體四個標籤分開放，避免重疊）
 export const LABEL_ANCHORS = {
   cornea: [-2.5, 12.4, 0],
   anteriorChamber: [-1.5, 11.0, 0],
   iris: [-4.4, 9.3, 0],
-  capsule: [-3.5, 6.35, 0],
-  cortex: [-3.7, 8.0, 0],
-  nucleus: [-1.4, 8.0, 0],
-  zonules: [-5.0, 8.2, 0],
+  capsule: [0, 5.9, 2.5],
+  cortex: [0, 7.0, 3.6],
+  nucleus: [0, 8.3, 1.2],
+  zonules: [0, 8.2, 5.0],
   ciliary: [-7.0, 7.5, 0],
   vitreous: [-4.0, 0, 0],
   retina: [-9.5, -5.5, 0],

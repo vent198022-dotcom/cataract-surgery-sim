@@ -16,7 +16,7 @@ const options = {
 if (serve) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
-  const { port } = await ctx.serve({ servedir: OUT_DIR, port: 8123 });
+  const { port } = await ctx.serve({ servedir: OUT_DIR, port: 8123, host: '127.0.0.1' });
   console.log(`預覽：http://localhost:${port}/`);
 } else {
   await esbuild.build(options);

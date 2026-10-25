@@ -98,6 +98,8 @@ export function createUI(content, handlers) {
       btn.labels.hidden = !orbit;
       btn.resetView.hidden = !orbit;
       $('layer-info').hidden = true;
+      clearTimeout(hintTimer);
+      $('hint').hidden = true;  // 換步驟時收起上一步的提示
     },
 
     setLabelsOn(on) { btn.labels.classList.toggle('on', on); },

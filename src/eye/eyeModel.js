@@ -197,5 +197,6 @@ export function createEye(layers) {
       labels.iol.visible = s.iol;
     },
   };
+  eye.setNucleusLayout({});  // 套用前即讓核塊位於重心
   return eye;
 }

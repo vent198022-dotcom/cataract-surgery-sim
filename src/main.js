@@ -95,6 +95,8 @@ function start() {
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hit = new THREE.Vector3();
   let downAt = null;
+  let pressed = false;  // 顯微鏡視角下是否按住（器械只在按住時跟著移動）
+  let lastPoint = NO_POINT;
 
   function aimRay(e) {
     const r = canvas.getBoundingClientRect();
@@ -113,25 +115,41 @@ function start() {
   }
 
   canvas.addEventListener('pointerdown', e => {
+    if (!e.isPrimary || e.button !== 0) return;
     downAt = { x: e.clientX, y: e.clientY };
     if (views.mode !== 'microscope') return;
     canvas.setPointerCapture(e.pointerId);
+    pressed = true;
     const p = workPoint(e);
-    if (p) controller.pointer('down', p);
+    if (p) {
+      lastPoint = p;
+      controller.pointer('down', p);
+    }
   });
   canvas.addEventListener('pointermove', e => {
-    if (views.mode !== 'microscope') return;
+    if (views.mode !== 'microscope' || !pressed) return;
     const p = workPoint(e);
-    if (p) controller.pointer('move', p);
+    if (p) {
+      lastPoint = p;
+      controller.pointer('move', p);
+    }
   });
   canvas.addEventListener('pointerup', e => {
+    if (!e.isPrimary) return;
     if (views.mode === 'microscope') {
-      controller.pointer('up', workPoint(e) ?? NO_POINT);
+      if (!pressed) return;
+      pressed = false;
+      controller.pointer('up', workPoint(e) ?? lastPoint);
       return;
     }
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) pickLayer(e);
+    downAt = null;
   });
-  canvas.addEventListener('pointercancel', () => controller.pointer('up', NO_POINT));
+  canvas.addEventListener('pointercancel', () => {
+    if (!pressed) return;
+    pressed = false;
+    controller.pointer('up', lastPoint);
+  });
 
   new ResizeObserver(layout).observe(stage);
   layout();

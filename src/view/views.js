@@ -19,8 +19,8 @@ export function createViews(renderer) {
   controls.maxDistance = 90;
 
   function resetOrbit() {
-    orbit.position.set(-32, 22, 36);
-    controls.target.set(0, 3, 0);
+    orbit.position.set(-20, 17, 24);  // 較近的視角，對準前段（手術部位）
+    controls.target.set(0, 6, 0);
     controls.update();
   }
   resetOrbit();

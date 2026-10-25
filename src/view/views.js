@@ -40,10 +40,11 @@ export function createViews(renderer) {
       orbit.updateProjectionMatrix();
       micro.updateProjectionMatrix();
     },
-    insetRect(w) {
-      const iw = Math.round(Math.min(w * 0.34, 420));
+    // 放在左下角：器械都從右側（主切口）與上方（側切口）進入，右下角是器械的起始位置
+    insetRect(w, h) {
+      const iw = Math.round(Math.min(w * 0.3, 380, (h - 32) / 0.75));
       const ih = Math.round(iw * 0.75);
-      return { x: w - iw - 16, y: 16, w: iw, h: ih };
+      return { x: 16, y: 16, w: iw, h: ih };
     },
     resetOrbit,
   };

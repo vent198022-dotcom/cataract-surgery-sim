@@ -65,13 +65,18 @@ button.toggle.on { background: #e8f4fb; border-color: var(--accent); }
   #topbar { gap: 10px; padding: 6px 10px; }
   #topbar h1 { font-size: 0.95rem; }
   #progress li { padding: 4px 8px; font-size: 0.75rem; }
-  #panel { flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 8px 10px; max-height: 46vh; overflow-y: auto; }
-  #step-text { flex: none; width: 100%; }
+  /* 按鈕區固定在下方；文字太長時只有文字區捲動 */
+  #panel { flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 8px 10px; max-height: 50vh; overflow: hidden; }
+  #step-text { flex: 1 1 auto; min-height: 0; width: 100%; overflow-y: auto; }
   #step-title { font-size: 1rem; margin-bottom: 2px; }
   #step-body p { margin: 2px 0; font-size: 0.9rem; line-height: 1.4; }
   #route-choice { margin-top: 6px; gap: 6px; }
-  #controls { flex: none; width: 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
-  button { flex: none; min-height: 44px; padding: 0 12px; font-size: 0.9rem; white-space: nowrap; }
+  /* 按鈕全部看得到、不必左右滑：「下一步」獨佔最上面一整列，其餘每列三個 */
+  #controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: none; width: 100%; gap: 6px; }
+  #controls button.primary { order: -1; grid-column: 1 / -1; }
+  #controls button:disabled { display: none; }  /* 手機上省空間：當下按不了的按鈕先不顯示 */
+  button { min-height: 44px; padding: 0 6px; font-size: 0.9rem; }
+  #route-choice button { flex: none; }
   #other-route { white-space: normal; }
   .label { font-size: 0.7rem; }
   #vision { top: 8px; right: 8px; gap: 6px; }

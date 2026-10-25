@@ -101,6 +101,7 @@ window.CONTENT = {
     moveToPiece: '把探頭移到發光的碎塊旁',
     grabDisc: '先把鑷子移到發光的囊片上再按住',
     pushInjector: '按住推注器往切口方向推',
+    cleared: '已清除 {n}/4',
     stepDone: '完成！請按「下一步」',
   },
   ui: {

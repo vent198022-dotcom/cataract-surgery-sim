@@ -29,7 +29,9 @@ export function createMaterials() {
     zonules: new THREE.LineBasicMaterial({ color: 0xd7dee3 }),
     incision: solid(0x7a3b3b),
     laser: new THREE.MeshBasicMaterial({ color: 0x7cff6b }),
-    iol: glass(0xe6f6ff, 0.15, { roughness: 0.05 }),  // 真實人工水晶體幾乎透明，太不透明會蓋住紅反射
-    haptic: solid(0x2f86d1),
+    // 人工水晶體：淡藍透明鏡片 + 亮邊 + 深藍支撐腳，植入後在眼內輪廓清楚
+    iol: glass(0xd9f2ff, 0.14, { roughness: 0.05, metalness: 0.1 }),  // 鏡片本身要清澈（紅反射透得過），輪廓靠亮邊
+    iolRim: new THREE.MeshStandardMaterial({ color: 0xeef8ff, emissive: 0x1d4f73, roughness: 0.2, transparent: true, opacity: 0.95 }),
+    haptic: solid(0x1f6fd0, { roughness: 0.35 }),
   };
 }

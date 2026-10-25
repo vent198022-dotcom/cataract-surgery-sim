@@ -135,15 +135,21 @@ function createIol(M) {
   const group = new THREE.Group();
   const profile = [[0, 0.42], [1.5, 0.32], [3, 0.08], [3, -0.08], [1.5, -0.32], [0, -0.42]];
   const optic = new THREE.Mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 48), M.iol);
+  // 光學區邊緣一圈亮環：真實人工水晶體在紅反射下最明顯的就是這圈邊緣
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(3, 0.09, 10, 96), M.iolRim);
+  rim.rotation.x = Math.PI / 2;
+  optic.add(rim);  // 隨光學區一起摺疊
   const haptics = new THREE.Group();
   const curve = new THREE.CatmullRomCurve3([[2.7, 0, 1.2], [3.6, 0, 2.6], [4.4, 0, 1.0], [4.3, 0, -1.0]].map(([x, y, z]) => new THREE.Vector3(x, y, z)));
   for (const turn of [0, Math.PI]) {
-    const loop = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, 0.12, 8, false), M.haptic);
+    const loop = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, 0.15, 8, false), M.haptic);
     loop.rotation.y = turn;
     haptics.add(loop);
   }
   group.add(optic, haptics);
   tag(group, 'iol');
+  // 排在紅反射（4）之後才畫，否則俯視時整片會被橘紅色蓋掉；子 Group 也要設，排序看最近的 Group
+  group.traverse(o => { o.renderOrder = 4.6; });
   return {
     group,
     // unfold 0 = 摺疊在推注器內、1 = 完全展開

@@ -76,7 +76,8 @@ export function createIncisionStep({ scene, eye, tools, ui, content }) {
       for (const m of Object.values(markers)) m.scale.set(s, s, s);
     },
     pointerDown(p) { if (busy) return; dragging = true; move(p); },
-    pointerMove(p) { if (dragging && !busy) move(p); },
+    // main.js 只在按住時轉送 move；刀子退出後若仍按著，直接接續拖曳，不必重按
+    pointerMove(p) { if (busy) return; dragging = true; move(p); },
     pointerUp() {
       if (dragging && pending().length > 0) ui.showHint(content.hints.moveToMarker);
       dragging = false;
@@ -86,7 +87,7 @@ export function createIncisionStep({ scene, eye, tools, ui, content }) {
     demoPath() {
       return [
         ...dragEvents(linePoints(REST, INCISIONS.main, 12), 0.3, 1.4),
-        ...dragEvents(linePoints({ x: 7.5, z: -1.5 }, INCISIONS.side, 12), 2.6, 1.4),
+        ...dragEvents(linePoints({ x: 7.5, z: -1.5 }, INCISIONS.side, 12), 3.0, 1.4),
       ];
     },
   });

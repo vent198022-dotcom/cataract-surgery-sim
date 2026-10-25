@@ -4,8 +4,60 @@ import { PROFILES, LENS, CAPSULE_OPENING, CAPSULE_Y, IOL_Y, INCISIONS, LABEL_ANC
 import { nucleusLayout } from './layout.js';
 import { makeRevolvedPart, Part, inCutRegion } from './revolve.js';
 import { createMaterials, BASE_CORTEX_OPACITY } from './materials.js';
+import { applyPlanarUV, scleraVesselTexture, redReflexTexture, glintTexture } from './textures.js';
 
 const PIECE_CENTER_R = 1.3;  // 每塊核的重心離光軸距離
+
+function applyUVToMeshes(object, radius) {
+  object.traverse(o => { if (o.isMesh) applyPlanarUV(o.geometry, radius); });
+}
+
+// 鞏膜外面一層薄殼（開口旋轉面），貼血管與角膜緣灰藍環；弧線同 sclera：R=12.02，仰角 61.1° → 20°
+function makeScleraVessels() {
+  const R = 12.02, a0 = (61.1 * Math.PI) / 180, a1 = (20 * Math.PI) / 180, n = 24;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + ((a1 - a0) * i) / n;
+    pts.push(new THREE.Vector2(R * Math.cos(a), R * Math.sin(a)));
+  }
+  const material = new THREE.MeshStandardMaterial({
+    map: scleraVesselTexture(), transparent: true, depthWrite: false, roughness: 0.5, side: THREE.DoubleSide,
+  });
+  const build = (phiLength, segments) => {
+    const geo = new THREE.LatheGeometry(pts, segments, 0, phiLength);
+    applyPlanarUV(geo, 12);
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.renderOrder = 1;
+    return mesh;
+  };
+  return { full: build(Math.PI * 2, 96), cut: build(Math.PI * 1.5, 72) };
+}
+
+// 顯微鏡主畫面專用的紅光反射圓盤：晶體後方、瞳孔透出橘紅色
+function makeRedReflex() {
+  const mesh = new THREE.Mesh(
+    new THREE.CircleGeometry(4.4, 64),
+    new THREE.MeshBasicMaterial({ map: redReflexTexture(), transparent: true, depthWrite: false }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 5.0;
+  mesh.renderOrder = 0;
+  return mesh;
+}
+
+// 角膜頂端兩個同軸燈反光點
+function makeGlints() {
+  const material = new THREE.MeshBasicMaterial({ map: glintTexture(), transparent: true, depthWrite: false, opacity: 0.85 });
+  const group = new THREE.Group();
+  for (const [x, z] of [[-0.6, -0.4], [0.7, -0.3]]) {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(x, 13.15, z);
+    mesh.renderOrder = 6;
+    group.add(mesh);
+  }
+  return group;
+}
 
 function tag(object, layerId) {
   object.traverse(o => { if (o.isMesh) o.userData.layerId = layerId; });
@@ -72,13 +124,16 @@ export function createEye(layers) {
   addPart('opticNerve', PROFILES.opticNerve, M.opticNerve);
   addPart('vitreous', PROFILES.vitreous, M.vitreous);
   addPart('ciliary', PROFILES.ciliary, M.ciliary);
-  addPart('iris', PROFILES.iris, M.iris);
+  const irisPart = addPart('iris', PROFILES.iris, M.iris);
+  applyUVToMeshes(irisPart.group, 5.6);
   addPart('capsuleBag', PROFILES.capsuleBag, M.capsule, 'capsule');
   addPart('capsuleDisc', PROFILES.capsuleDisc, M.capsuleDisc, 'capsule');
   addPart('cortex', PROFILES.cortex, M.cortex);
   addPart('cornea', PROFILES.cornea, M.cornea);
   parts.zonules = new Part('zonules', makeZonules(M.zonules));
   root.add(parts.zonules.group);
+  parts.scleraVessels = new Part('sclera', makeScleraVessels());
+  root.add(parts.scleraVessels.group);
 
   // 透明層由內往外畫
   const order = { vitreous: 1, capsuleBag: 2, capsuleDisc: 2, cortex: 3, cornea: 5 };
@@ -92,6 +147,7 @@ export function createEye(layers) {
     const material = M.nucleus.clone();
     const { full } = makeRevolvedPart(PROFILES.nucleus, material, { phiStart: (q * Math.PI) / 2, phiLength: Math.PI / 2 });
     tag(full, 'nucleus');
+    applyUVToMeshes(full, 3.13);
     const phi = ((q + 0.5) * Math.PI) / 2;
     const dir = new THREE.Vector3(Math.sin(phi), 0, Math.cos(phi));
     const centroid = dir.clone().multiplyScalar(PIECE_CENTER_R).setY(LENS.center);
@@ -120,6 +176,10 @@ export function createEye(layers) {
   const iol = createIol(M);
   root.add(iol.group);
 
+  const redReflex = makeRedReflex();
+  const glints = makeGlints();
+  root.add(redReflex, glints);
+
   const labels = {};
   for (const [id, [x, y, z]] of Object.entries(LABEL_ANCHORS)) {
     const el = document.createElement('div');
@@ -144,11 +204,13 @@ export function createEye(layers) {
   }
 
   const eye = {
-    root, parts, pieces, nucleusGroup, laserRing, incisionMarks, iol, labels,
+    root, parts, pieces, nucleusGroup, laserRing, incisionMarks, iol, labels, redReflex, glints,
 
     setCutaway(on) {
       cutaway = on;
       for (const part of Object.values(parts)) part.setCutaway(on);
+      redReflex.visible = !on;  // 只在顯微鏡主畫面出現
+      glints.visible = !on;
       refreshPieces();
     },
 

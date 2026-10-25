@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { irisTexture, nucleusTexture } from './textures.js';
 
 export const BASE_CORTEX_OPACITY = 0.35;
 
@@ -15,13 +16,13 @@ export function createMaterials() {
     opticNerve: solid(0xe6cf98),
     vitreous: glass(0xd8f1f6, 0.16),
     ciliary: solid(0x8d5a43),
-    iris: solid(0x6b4a2f),
+    iris: solid(0xffffff, { map: irisTexture(), roughness: 0.8 }),
     // 顯微鏡頂燈下，光澤過強的角膜會讓畫面發灰；混濁水晶體則偏奶油色而非黃色，故放寬粗糙度、降低透明度
     capsule: glass(0xd6efff, 0.35, { roughness: 0.7 }),
     capsuleDisc: glass(0xd6efff, 0.45, { roughness: 0.7 }),
     cortex: glass(0xead79a, BASE_CORTEX_OPACITY),
-    nucleus: solid(0xc6963a, { roughness: 0.85 }),
-    cornea: glass(0xbfe6f5, 0.1),
+    nucleus: solid(0xffffff, { map: nucleusTexture(), roughness: 0.85 }),
+    cornea: glass(0xbfe6f5, 0.1, { roughness: 0.05, metalness: 0.1 }),
     zonules: new THREE.LineBasicMaterial({ color: 0xd7dee3 }),
     incision: solid(0x7a3b3b),
     laser: new THREE.MeshBasicMaterial({ color: 0x7cff6b }),

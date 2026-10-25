@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>白內障手術 3D 互動模擬</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topbar">
+    <h1 id="app-title">白內障手術 3D 互動模擬</h1>
+    <ol id="progress"></ol>
+  </header>
+  <main id="stage">
+    <div id="labels"></div>
+    <div id="inset-frame" hidden><span>剖面圖</span></div>
+    <div id="counter" hidden></div>
+    <div id="hint" hidden></div>
+    <div id="layer-info" hidden><strong id="layer-name"></strong><p id="layer-desc"></p></div>
+    <div id="vision" hidden>
+      <figure id="vision-before"><canvas width="480" height="300"></canvas><figcaption></figcaption></figure>
+      <figure id="vision-after"><canvas width="480" height="300"></canvas><figcaption></figcaption></figure>
+    </div>
+  </main>
+  <footer id="panel">
+    <section id="step-text">
+      <h2 id="step-title"></h2>
+      <div id="step-body"></div>
+      <div id="route-choice" hidden></div>
+      <button id="other-route" type="button" hidden></button>
+    </section>
+    <nav id="controls"></nav>
+  </footer>
+  <div id="fatal" hidden></div>
+  <script src="content.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -84,3 +84,42 @@ export function beamAt(segments, durations, elapsed) {
   }
   return { segment: segments.length - 1, f: totalPoints - 1, revealed: totalPoints };
 }
+
+// 雷射雨：每個目標點的「落點時間」（秒）。windows 為 [{ segments: [段索引], t0, t1 }]，
+// 該時段內依路徑順序把這些段的點均勻排在 t0..t1；沒有排進任何時段的點為 Infinity。
+export function scheduleRain(segments, windows) {
+  const last = segments[segments.length - 1];
+  const land = new Array(last.start + last.count).fill(Infinity);
+  for (const w of windows) {
+    const idx = [...w.segments].sort((a, b) => a - b);
+    const total = idx.reduce((n, i) => n + segments[i].count, 0);
+    let k = 0;
+    for (const i of idx) {
+      const seg = segments[i];
+      for (let j = 0; j < seg.count; j++, k++) {
+        land[seg.start + j] = total > 1 ? w.t0 + ((w.t1 - w.t0) * k) / (total - 1) : w.t0;
+      }
+    }
+  }
+  return land;
+}
+
+// 時刻 t 已落地的點數（落點時間依序遞增，所以是開頭連續的那一段）
+export function landedCount(land, t) {
+  let n = 0;
+  while (n < land.length && land[n] <= t) n++;
+  return n;
+}
+
+// 時刻 t 正在空中下落的光條：從 dockY 垂直落到目標點高度，速度 speed（mm/s），落地當下消失。
+// y 為光條前端（下端）高度
+export function rainStreaks(positions, land, t, dockY, speed) {
+  const out = [];
+  for (let i = 0; i < land.length; i++) {
+    if (!(land[i] > t)) continue;
+    const y = positions[i * 3 + 1];
+    const spawn = land[i] - (dockY - y) / speed;
+    if (t >= spawn) out.push({ i, x: positions[i * 3], z: positions[i * 3 + 2], y: dockY - speed * (t - spawn) });
+  }
+  return out;
+}

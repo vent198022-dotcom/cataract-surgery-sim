@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRevolvedPart, inCutRegion } from '../src/eye/revolve.js';
 import { nucleusLayout, chopOffsets, H_FINAL, Q_FINAL, HALF_GAP, QUARTER_GAP, LASER_GAP } from '../src/eye/layout.js';
-import { PROFILES, nucleusTopY } from '../src/eye/anatomy.js';
+import { PROFILES, nucleusTopY, bevelIncision } from '../src/eye/anatomy.js';
 import { createInitialState } from '../src/core/state.js';
 
+const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} !~ ${b}`);
 const square = [[0, 0], [1, 0], [1, 1], [0, 1]];
 
 test('full revolution: no caps, cut variant has two caps', () => {
@@ -66,4 +67,30 @@ test('nucleusTopY follows the nucleus front surface', () => {
   assert.ok(Math.abs(nucleusTopY(0) - (8 + 0.68 * 1.5)) < 1e-9);
   assert.ok(Math.abs(nucleusTopY(3.2) - 8) < 1e-9);
   assert.ok(Math.abs(nucleusTopY(5) - 8) < 1e-9);
+});
+
+test('bevelIncision: 90 degrees runs along the surface normal to the inner surface', () => {
+  const { outer, inner } = bevelIncision(5.1, 90);
+  const cy = 5.285;
+  close(Math.hypot(outer[0], outer[1] - cy), 7.8, 1e-9);
+  close(Math.hypot(inner[0], inner[1] - cy), 7.2, 1e-9);
+  const n = [outer[0] / 7.8, (outer[1] - cy) / 7.8];
+  const tangent = [-n[1], n[0]];
+  const cut = [inner[0] - outer[0], inner[1] - outer[1]];
+  close(cut[0] * tangent[0] + cut[1] * tangent[1], 0, 1e-9);  // 垂直表面
+  assert.ok(inner[0] < outer[0]);  // 法線朝向中心，r 變小
+});
+
+test('bevelIncision: 130 degrees undercuts outward at 130 degrees to the central surface', () => {
+  const b90 = bevelIncision(5.1, 90);
+  const b130 = bevelIncision(5.1, 130);
+  const cy = 5.285;
+  close(Math.hypot(b130.inner[0], b130.inner[1] - cy), 7.2, 1e-9);
+  assert.ok(b130.inner[0] > b90.inner[0]);  // 往角膜緣方向外傾
+  const n = [b130.outer[0] / 7.8, (b130.outer[1] - cy) / 7.8];
+  const tangent = [-n[1], n[0]];  // 朝中心（r 變小）的表面切線
+  const cut = [b130.inner[0] - b130.outer[0], b130.inner[1] - b130.outer[1]];
+  const angle = Math.acos((cut[0] * tangent[0] + cut[1] * tangent[1]) / Math.hypot(cut[0], cut[1])) * 180 / Math.PI;
+  assert.ok(Math.abs(angle - 130) < 0.5, `angle ${angle}`);
+  assert.ok(b130.inner[1] < b130.outer[1]);  // 往組織深處走
 });

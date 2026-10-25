@@ -76,3 +76,22 @@ export function nucleusTopY(r) {
   const R = NUCLEUS_SCALE * LENS.radius;
   return LENS.center + NUCLEUS_SCALE * LENS.front * Math.sqrt(Math.max(0, 1 - (r / R) ** 2));
 }
+
+// 倒嵌角切口（飛秒雷射）：側壁與角膜表面（中心側）夾角 alphaDeg（>90°，約 130°），
+// 切面往深處走時向角膜緣外傾，像榫頭一樣卡住。回傳徑向 (r, y) 半平面上的外口與內口。
+// 90° 即垂直角膜表面（沿法線向內）。
+export function bevelIncision(rOuter, alphaDeg = 130) {
+  const CY = 5.285, R_OUT = 7.8, R_IN = 7.2;
+  const oy = CY + Math.sqrt(R_OUT * R_OUT - rOuter * rOuter);
+  const nr = rOuter / R_OUT, ny = (oy - CY) / R_OUT;  // 向外法線
+  const tr = -ny, ty = nr;                            // 朝中心（r 變小）的表面切線
+  const a = rad(alphaDeg);
+  // 切線朝「穿過組織向下」旋轉：t·cos(a) + (−n)·sin(a)
+  const dr = tr * Math.cos(a) - nr * Math.sin(a);
+  const dy = ty * Math.cos(a) - ny * Math.sin(a);
+  // 射線與內表面圓（半徑 7.2）的交點，取最近的正根
+  const qr = rOuter, qy = oy - CY;
+  const b = qr * dr + qy * dy;
+  const s = -b - Math.sqrt(b * b - (R_OUT * R_OUT - R_IN * R_IN));
+  return { outer: [rOuter, oy], inner: [rOuter + dr * s, oy + dy * s] };
+}

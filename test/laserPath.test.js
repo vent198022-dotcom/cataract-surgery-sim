@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLaserPath, pointAt, scheduleLaser, beamAt } from '../src/steps/laserPath.js';
+import { buildLaserPath, pointAt, scheduleLaser, beamAt, scheduleRain, landedCount, rainStreaks } from '../src/steps/laserPath.js';
 import { CAPSULE_OPENING, CAPSULE_Y, INCISIONS } from '../src/eye/anatomy.js';
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} !~ ${b}`);
@@ -77,4 +77,60 @@ test('beamAt traces each segment end to end and reveals progressively', () => {
   const end = beamAt(segments, d, 100);
   assert.equal(end.revealed, positions.length / 3);
   assert.equal(end.f, positions.length / 3 - 1);
+});
+
+test('scheduleRain lands each window\'s points in order inside the window', () => {
+  const { segments } = buildLaserPath();
+  const incIdx = segments.map((s, i) => (s.phase === 'incision' ? i : -1)).filter(i => i >= 0);
+  const otherIdx = segments.map((s, i) => (s.phase !== 'incision' ? i : -1)).filter(i => i >= 0);
+  const land = scheduleRain(segments, [
+    { segments: otherIdx, t0: 4, t1: 9 },
+    { segments: [incIdx[0]], t0: 10, t1: 11 },
+    { segments: [incIdx[1]], t0: 13, t1: 13.6 },
+  ]);
+  const total = segments[segments.length - 1].start + segments[segments.length - 1].count;
+  assert.equal(land.length, total);
+  // 每個點都有排程、整體由小到大
+  for (let i = 1; i < land.length; i++) assert.ok(land[i] >= land[i - 1], `order at ${i}`);
+  close(land[0], 4);
+  const mainSeg = segments[incIdx[0]], sideSeg = segments[incIdx[1]];
+  close(land[mainSeg.start], 10); close(land[mainSeg.start + mainSeg.count - 1], 11);
+  close(land[sideSeg.start], 13); close(land[sideSeg.start + sideSeg.count - 1], 13.6);
+  // 囊膜切開 + 碎裂都在 4–9 秒內，不會跟切口時段重疊
+  for (const i of otherIdx) {
+    const s = segments[i];
+    for (let k = 0; k < s.count; k++) assert.ok(land[s.start + k] >= 4 - 1e-9 && land[s.start + k] <= 9 + 1e-9);
+  }
+});
+
+test('scheduleRain leaves unscheduled points at Infinity', () => {
+  const { segments } = buildLaserPath();
+  const land = scheduleRain(segments, [{ segments: [0], t0: 1, t1: 2 }]);
+  assert.equal(land[0], 1);
+  assert.equal(land[segments[0].count - 1], 2);
+  assert.equal(land[segments[1].start], Infinity);
+});
+
+test('landedCount counts the leading points that have landed', () => {
+  const land = [1, 2, 3, Infinity];
+  assert.equal(landedCount(land, 0.5), 0);
+  assert.equal(landedCount(land, 1), 1);
+  assert.equal(landedCount(land, 2.5), 2);
+  assert.equal(landedCount(land, 99), 3);
+});
+
+test('rainStreaks fall vertically from the dock to the target and vanish on landing', () => {
+  const positions = [1, 9, 2, 3, 8, -1];
+  const land = [5, 6];
+  const speed = 45, dockY = 13.3;
+  const fall0 = (dockY - 9) / speed;
+  assert.equal(rainStreaks(positions, land, 5 - fall0 - 0.01, dockY, speed).length, 0);
+  const atSpawn = rainStreaks(positions, land, 5 - fall0, dockY, speed);
+  assert.equal(atSpawn.length, 1);
+  close(atSpawn[0].y, dockY);
+  assert.equal(atSpawn[0].x, 1); assert.equal(atSpawn[0].z, 2);
+  const mid = rainStreaks(positions, land, 5 - fall0 / 2, dockY, speed);
+  close(mid[0].y, (dockY + 9) / 2, 1e-6);
+  assert.equal(rainStreaks(positions, land, 5, dockY, speed).length, 0);  // 抵達當下就消失
+  assert.equal(rainStreaks(positions, land, 5.5, dockY, speed).length, 0);
 });

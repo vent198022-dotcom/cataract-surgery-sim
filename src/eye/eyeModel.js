@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PROFILES, LENS, CAPSULE_OPENING, CAPSULE_Y, IOL_Y, INCISIONS, LABEL_ANCHORS } from './anatomy.js';
+import { PROFILES, LENS, CAPSULE_OPENING, CAPSULE_Y, IOL_Y, INCISIONS, LABEL_ANCHORS, bevelIncision } from './anatomy.js';
 import { nucleusLayout } from './layout.js';
 import { makeRevolvedPart, Part, inCutRegion } from './revolve.js';
 import { createMaterials, BASE_CORTEX_OPACITY } from './materials.js';
@@ -71,6 +71,39 @@ function makeGlints() {
 
 function tag(object, layerId) {
   object.traverse(o => { if (o.isMesh) o.userData.layerId = layerId; });
+}
+
+// 飛秒雷射的倒嵌角切口（130°）：在切口的徑向平面上，沿角膜緣切線拉出一片從外口斜到內口的薄片，
+// 外口與內口各畫一條亮線，讓切口開口清楚可見
+const BEVEL_R_OUTER = 5.1;
+const BEVEL_ANGLE = 130;
+function makeBevelIncision(inc) {
+  const len = Math.hypot(inc.x, inc.z);
+  const ux = inc.x / len, uz = inc.z / len;      // 徑向（離光軸方向）
+  const vx = -uz, vz = ux;                       // 沿角膜緣的切線
+  const { outer, inner } = bevelIncision(BEVEL_R_OUTER, BEVEL_ANGLE);
+  const half = inc.length / 2;
+  const at = ([r, y], d) => [ux * r + vx * d, y, uz * r + vz * d];
+  const corners = [at(outer, -half), at(outer, half), at(inner, half), at(inner, -half)];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(corners.flat(), 3));
+  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  geometry.computeVertexNormals();
+  const slab = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+    color: 0x5a1f1f, side: THREE.DoubleSide, transparent: true, opacity: 0.85, depthWrite: false,
+  }));
+  const edges = new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints([corners[0], corners[1], corners[2], corners[3]].map(p => new THREE.Vector3(...p))),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }),
+  );
+  edges.geometry.setIndex([0, 1, 2, 3]);  // 外口、內口兩條線
+  const group = new THREE.Group();
+  group.add(slab, edges);
+  group.renderOrder = 5.5;
+  group.traverse(o => { o.renderOrder = 5.5; });
+  tag(group, 'cornea');
+  group.visible = false;
+  return group;
 }
 
 function makeZonules(material) {
@@ -220,7 +253,7 @@ export function createEye(layers) {
   }
 
   const eye = {
-    root, parts, pieces, nucleusGroup, capsuleFlap, laserRing, incisionMarks, iol, labels, redReflex, glints,
+    root, parts, pieces, nucleusGroup, capsuleFlap, laserRing, incisionMarks, bevelIncisions, iol, labels, redReflex, glints,
 
     setCutaway(on) {
       cutaway = on;

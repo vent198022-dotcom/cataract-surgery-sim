@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CAPSULE_OPENING } from './anatomy.js';
-import { flapVertex } from './flapMath.js';
+import { flapVertex, gripWeight, anteriorY, FLAP_R } from './flapMath.js';
 
 const RINGS = 12;
 const SEGS = 96;
@@ -33,12 +33,28 @@ export function createCapsuleFlap(material) {
   mesh.add(surface);
   mesh.visible = false;
 
-  function update(tear, peel = 0, grip = null) {
+  // radiusAt(θ)：自由撕出的開口半徑（見 tearPath）；省略時為正圓。
+  // 每個頂點先用固定半徑 FLAP_R 算出折疊，再依 R(θ) 縮放 x/z、沿前囊表面調整高度，最後才套用夾點拉力
+  function update(tear, peel = 0, grip = null, radiusAt = null) {
     const set = (k, v) => { positions[k * 3] = v.x; positions[k * 3 + 1] = v.y; positions[k * 3 + 2] = v.z; };
-    set(0, flapVertex(0, 0, tear, peel, grip));
-    for (let j = 1; j <= RINGS; j++) {
-      const r = (j / RINGS) * CAPSULE_OPENING;
-      for (let i = 0; i < SEGS; i++) set(at(j, i), flapVertex(r, (i / SEGS) * Math.PI * 2, tear, peel, grip));
+    const place = (r, theta, R) => {
+      const v = flapVertex(r, theta, tear, peel);
+      const k = R / FLAP_R;
+      v.x *= k; v.z *= k;
+      v.y += anteriorY((r / FLAP_R) * R) - anteriorY(r);
+      if (grip && grip.strength > 0) {
+        const w = gripWeight(r, theta, tear, grip.strength);
+        if (w > 0) {
+          v.x += (grip.x - v.x) * w; v.y += (grip.y - v.y) * w; v.z += (grip.z - v.z) * w;
+        }
+      }
+      return v;
+    };
+    set(0, place(0, 0, FLAP_R));
+    for (let i = 0; i < SEGS; i++) {
+      const theta = (i / SEGS) * Math.PI * 2;
+      const R = radiusAt ? radiusAt(theta) : FLAP_R;
+      for (let j = 1; j <= RINGS; j++) set(at(j, i), place((j / RINGS) * CAPSULE_OPENING, theta, R));
     }
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();

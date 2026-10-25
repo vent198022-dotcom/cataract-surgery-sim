@@ -5,6 +5,8 @@ import { nucleusLayout } from './layout.js';
 import { makeRevolvedPart, Part, inCutRegion } from './revolve.js';
 import { createMaterials, BASE_CORTEX_OPACITY } from './materials.js';
 import { createCapsuleFlap } from './capsuleFlap.js';
+import { anteriorY } from './flapMath.js';
+import { defaultCapsulotomy } from './tearPath.js';
 import { applyPlanarUV, scleraVesselTexture, redReflexTexture, glintTexture } from './textures.js';
 
 const PIECE_CENTER_R = 1.3;  // 每塊核的重心離光軸距離
@@ -12,6 +14,36 @@ const STAIN_BASE = new THREE.Color(0xd6efff);   // 囊膜原色
 const STAIN_BLUE = new THREE.Color(0x4f86d9);   // 台盼藍染色後
 const DISC_STAIN_OPACITY = 0.6;
 const BAG_STAIN_OPACITY = 0.3;
+const RIM_SEGS = 96, RIM_RADIAL = 3;  // 撕囊開口補邊的取樣
+
+// 撕囊開口補邊：囊袋的洞是固定的 r = CAPSULE_OPENING 圓，撕得比它小的地方要補回一圈囊膜。
+// 每個角度從 R(θ) 到 CAPSULE_OPENING（R 不小於它就沒有寬度）；skipCut 時略過剖面切掉的那 1/4
+function buildRimGeometry(radiusAt, skipCut) {
+  const positions = [], index = [];
+  const cols = RIM_RADIAL + 1;
+  for (let i = 0; i <= RIM_SEGS; i++) {
+    const theta = (i / RIM_SEGS) * Math.PI * 2;
+    const c = Math.cos(theta), s = Math.sin(theta);
+    const R = Math.min(CAPSULE_OPENING, radiusAt(theta));
+    for (let k = 0; k <= RIM_RADIAL; k++) {
+      const r = R + ((CAPSULE_OPENING - R) * k) / RIM_RADIAL;
+      positions.push(r * c, anteriorY(r) + 0.005, r * s);
+    }
+  }
+  for (let i = 0; i < RIM_SEGS; i++) {
+    const mid = ((i + 0.5) / RIM_SEGS) * Math.PI * 2;
+    if (skipCut && inCutRegion(Math.cos(mid), Math.sin(mid))) continue;
+    for (let k = 0; k < RIM_RADIAL; k++) {
+      const a = i * cols + k, b = a + cols, c = a + 1, d = b + 1;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 function applyUVToMeshes(object, radius) {
   object.traverse(o => { if (o.isMesh) applyPlanarUV(o.geometry, radius); });
@@ -183,6 +215,14 @@ export function createEye(layers) {
   applyUVToMeshes(irisPart.group, 5.6);
   addPart('capsuleBag', PROFILES.capsuleBag, M.capsule, 'capsule');
   addPart('capsuleDisc', PROFILES.capsuleDisc, M.capsuleDisc, 'capsule');
+  // 撕囊開口補邊：與囊袋同材質（染色一起變），自己一個 Group（renderOrder 4.5）才畫得在紅反射之上
+  const rimMeshes = { full: new THREE.Mesh(new THREE.BufferGeometry(), M.capsule), cut: new THREE.Mesh(new THREE.BufferGeometry(), M.capsule) };
+  for (const m of Object.values(rimMeshes)) m.frustumCulled = false;
+  parts.capsuleRim = new Part('capsule', rimMeshes);
+  parts.capsuleRim.group.renderOrder = 4.5;
+  parts.capsuleRim.group.traverse(o => { o.renderOrder = 4.5; });
+  parts.capsuleRim.setPresent(false);
+  root.add(parts.capsuleRim.group);
   addPart('cortex', PROFILES.cortex, M.cortex);
   addPart('cornea', PROFILES.cornea, M.cornea);
   parts.zonules = new Part('zonules', makeZonules(M.zonules));
@@ -261,6 +301,7 @@ export function createEye(layers) {
 
   const world = new THREE.Vector3();
   let cutaway = false;
+  let capsulotomyShape = null;  // 撕囊開口半徑 R(θ)；null = 尚未撕（跳關時才補預設）
 
   // 剖面模式下，重心落在被切掉那 1/4 的碎塊要藏起來
   function refreshPieces() {
@@ -319,6 +360,17 @@ export function createEye(layers) {
       M.capsule.color.copy(STAIN_BASE).lerp(STAIN_BLUE, 0.5 * a);
       M.capsule.opacity = bagBaseOpacity + (BAG_STAIN_OPACITY - bagBaseOpacity) * a;
     },
+    // 記下撕囊開口形狀（radiusAt(θ) → 半徑），null 清除；顯示與否由 applyState 決定
+    setCapsulotomyShape(radiusAt) {
+      capsulotomyShape = radiusAt || null;
+      for (const key of ['full', 'cut']) {
+        rimMeshes[key].geometry.dispose();
+        rimMeshes[key].geometry = capsulotomyShape
+          ? buildRimGeometry(capsulotomyShape, key === 'cut')
+          : new THREE.BufferGeometry();
+      }
+      if (!capsulotomyShape) parts.capsuleRim.setPresent(false);
+    },
     setCortexOpacity(opacity) { M.cortex.opacity = opacity; },
 
     applyState(s) {
@@ -328,6 +380,9 @@ export function createEye(layers) {
       bevelIncisions.main.visible = femto && s.incisions.main;
       bevelIncisions.side.visible = femto && s.incisions.side;
       parts.capsuleDisc.setPresent(!s.capsuleOpen);
+      // 古典路線撕完後，開口不是正圓；沒有記錄的形狀（跳關）就用略不規則的預設
+      if (s.route === 'classic' && s.capsuleOpen && !capsulotomyShape) eye.setCapsulotomyShape(defaultCapsulotomy);
+      parts.capsuleRim.setPresent(s.route === 'classic' && s.capsuleOpen && !!capsulotomyShape);
       parts.capsuleDisc.group.position.set(0, 0, 0);
       parts.capsuleDisc.group.scale.setScalar(1);
       eye.setDiscGlow(0);

@@ -47,33 +47,29 @@ export function createProgressPath(pointAt, y, bins, material = progressMat) {
   };
 }
 
-// 沿圓周連續長出的撕裂邊緣：兩個方向（+1 / −1）各一條完整圓管，以 drawRange 露出已撕開的角度
-const EDGE_TUBULAR = 96, EDGE_RADIAL = 6;
-export function createTornEdge(radius, y, material = tornEdgeMat, tubeRadius = 0.07) {
+// 自由撕囊的撕裂邊緣：一條穿過一串 3D 點的白色圓管，路徑增長時用 set(points) 重建（舊幾何會釋放）
+export function createPathEdge(material = tornEdgeMat, tubeRadius = 0.07) {
   const object = new THREE.Group();
-  const tubes = [1, -1].map(dir => {
-    const curve = new THREE.Curve();
-    curve.getPoint = (t, target = new THREE.Vector3()) =>
-      target.set(radius * Math.cos(dir * t * Math.PI * 2), y, radius * Math.sin(dir * t * Math.PI * 2));
-    const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, EDGE_TUBULAR, tubeRadius, EDGE_RADIAL, false), material);
-    mesh.renderOrder = 10;
-    mesh.frustumCulled = false;
-    mesh.visible = false;
-    object.add(mesh);
-    return mesh;
-  });
-  const show = (dir, angle) => {
-    const n = Math.min(EDGE_TUBULAR, Math.max(0, Math.floor((EDGE_TUBULAR * angle) / (Math.PI * 2))));
-    tubes.forEach((mesh, i) => {
-      const on = (i === 0 ? 1 : -1) === dir && n > 0;
-      mesh.visible = on;
-      if (on) mesh.geometry.setDrawRange(0, n * EDGE_RADIAL * 6);
-    });
+  let mesh = null;
+  const clear = () => {
+    if (!mesh) return;
+    object.remove(mesh);
+    mesh.geometry.dispose();
+    mesh = null;
   };
   return {
     object,
-    setAngle: show,
-    clear() { tubes.forEach(m => { m.visible = false; }); },
+    clear,
+    set(points) {
+      clear();
+      if (points.length < 2) return;
+      const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+      const segments = Math.min(600, Math.max(8, points.length * 3));
+      mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, segments, tubeRadius, 6, false), material);
+      mesh.renderOrder = 10;
+      mesh.frustumCulled = false;
+      object.add(mesh);
+    },
   };
 }
 

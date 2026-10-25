@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anteriorY, contiguousRun, tearState, flapVertex } from '../src/eye/flapMath.js';
+import { anteriorY, contiguousRun, tearState, flapVertex, gripWeight } from '../src/eye/flapMath.js';
 import { LENS, CAPSULE_OPENING } from '../src/eye/anatomy.js';
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -98,4 +98,26 @@ test('grip: a vertex just ahead of the front is only partly pulled (w <= 0.35)',
   const full = Math.hypot(grip.x - base.x, grip.y - base.y, grip.z - base.z);
   const moved = Math.hypot(v.x - base.x, v.y - base.y, v.z - base.z);
   assert.ok(moved > 0 && moved <= 0.35 * full + 1e-9, `moved ${moved} of ${full}`);
+});
+
+test('gripWeight: 0 inside GRIP_R0, peaks at the front outer rim, ahead side is weaker', () => {
+  const tear = { dir: 1, angle: 1.0 };
+  assert.equal(gripWeight(1.5, 1.0, tear, 1), 0);
+  const peak = gripWeight(2.6, 1.0, tear, 1);
+  close(peak, 1);
+  close(gripWeight(2.6, 1.0, tear, 0.5), 0.5);
+  assert.ok(gripWeight(2.6, 0.9, tear, 1) < peak);
+  close(gripWeight(2.6, 1.1, tear, 1), gripWeight(2.6, 0.9, tear, 1) * 0.35);
+  assert.equal(gripWeight(2.6, 3.0, tear, 1), 0);
+});
+
+test('flapVertex with grip equals the ungripped vertex pulled by gripWeight', () => {
+  const tear = { dir: 1, angle: 1.0 };
+  const grip = { x: 1, y: 11, z: 2, strength: 0.8 };
+  const base = flapVertex(2.4, 0.95, tear, 0);
+  const w = gripWeight(2.4, 0.95, tear, grip.strength);
+  const v = flapVertex(2.4, 0.95, tear, 0, grip);
+  close(v.x, base.x + (grip.x - base.x) * w);
+  close(v.y, base.y + (grip.y - base.y) * w);
+  close(v.z, base.z + (grip.z - base.z) * w);
 });

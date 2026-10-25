@@ -39,6 +39,17 @@ const AHEAD_STRETCH = 0.35; // 尚未撕到的一側（膜被拉長）受力係�
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
+// 鑷子夾點對 (r, θ) 這個頂點的拉力權重 0..1：靠近撕裂前緣、外圈的頂點受力最大；
+// 尚未撕到的一側（膜被拉長）打折。tear = { dir, angle }，strength 為夾持強度 0..1
+export function gripWeight(r, theta, tear, strength) {
+  if (!(strength > 0)) return 0;
+  const rel = (((tear.dir * theta) % TWO_PI) + TWO_PI) % TWO_PI;
+  const d = rel - tear.angle;
+  let w = strength * clamp01(1 - Math.abs(d) / GRIP_SPAN) * clamp01((r - GRIP_R0) / (FLAP_R - GRIP_R0));
+  if (d > 0) w *= AHEAD_STRETCH;
+  return w;
+}
+
 // 前囊片上 (r, θ) 這一點的位置。tear = { dir, angle }；peel 0..1 為整片折起程度；
 // grip = { x, y, z, strength } 為鑷子夾住撕裂前緣的點，靠近前緣的外圈頂點會被拉向它
 export function flapVertex(r, theta, tear, peel = 0, grip = null) {
@@ -60,9 +71,7 @@ export function flapVertex(r, theta, tear, peel = 0, grip = null) {
     };
   }
   if (grip && grip.strength > 0) {
-    const d = rel - tear.angle;
-    let w = grip.strength * clamp01(1 - Math.abs(d) / GRIP_SPAN) * clamp01((r - GRIP_R0) / (FLAP_R - GRIP_R0));
-    if (d > 0) w *= AHEAD_STRETCH;
+    const w = gripWeight(r, theta, tear, grip.strength);
     if (w > 0) {
       v = { x: v.x + (grip.x - v.x) * w, y: v.y + (grip.y - v.y) * w, z: v.z + (grip.z - v.z) * w };
     }

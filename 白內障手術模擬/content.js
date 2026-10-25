@@ -25,7 +25,7 @@ window.CONTENT = {
       title: '撕開前囊',
       text: [
         '水晶體外面包著一層薄薄的「囊袋」。醫師會先用藍色染劑讓透明的囊膜看得清楚，再撕開一個圓形開口。',
-        '請按住撕囊鑷，沿著虛線圓圈拖一圈。',
+        '請按住撕囊鑷帶著囊瓣繞一圈，最後回到起點把切線接起來。',
       ],
     },
     chop: {
@@ -97,6 +97,8 @@ window.CONTENT = {
   hints: {
     followLine: '請沿著虛線劃',
     followCircle: '請沿著虛線圓圈拖動',
+    tearTooWide: '太靠外側囊袋容易裂開，請往內一點',
+    closeLoop: '快完成了！繞回起點把切線接起來',
     moveToMarker: '把刀尖拖到閃爍的標記點',
     moveToPiece: '把探頭移到發光的碎塊旁',
     grabDisc: '先把鑷子移到發光的囊片上再按住',

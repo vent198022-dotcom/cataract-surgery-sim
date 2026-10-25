@@ -7,6 +7,7 @@ import { dragEvents } from '../core/demo.js';
 import { INCISIONS } from '../eye/anatomy.js';
 import { chopOffsets, H_FINAL, Q_FINAL } from '../eye/layout.js';
 import { createPathCrack } from '../eye/crack.js';
+import { straightCuts, boundaryFromPath, continueAcross, clampCuts, localPoint } from '../eye/nucleusCuts.js';
 import { createChopStroke, alignNegZ, alignX, localX, shortestDelta, wobblePath, pointAlong } from './chopStroke.js';
 
 const WORK_Y = 9.1;
@@ -23,6 +24,7 @@ const START_R = 2.4;                // 從這個半徑以外下刀，裂縫才�
 const ALIGN_TIME = 0.25;            // 第二刀下刀時，核轉到對準劈向的時間
 const EDGE_HINT_GAP = 2;            // 「先移到邊緣」提示的最短間隔（秒）
 const AUTO_WOBBLE = 0.25;           // 自動那一刀的側向擺動（mm）
+const CONTINUE_SEED = 3;            // 第一刀另一側（病人沒拉的那邊）延伸切線的擺動種子
 
 // 真實劈核（自由劈）：探頭吸住核中央 → 病人把劈核器從核邊緣往探頭拉，裂縫沿實際拉過的路徑長出，
 // 核的裂縫方向自動對準病人拉的方向 → 撐開 → 劈核器把核推轉 → 第二刀（劈較靠近下刀點的那一半）
@@ -34,6 +36,7 @@ export function createChopStep({ eye, tools, ui, content }) {
   let aligning = false;   // 第二刀下刀後核正在轉到對準方向，這段時間不記錄移動
   let patientSign = 1;    // 第二刀劈的那一半：+1 = q0/q1（核座標 x>0）、-1 = q2/q3
   let rotation = 0;
+  let cuts = straightCuts();  // 目前四條切線 B0..B3（核座標、旋轉體角度）；劈完一刀就把那條換成病人拉的路徑
   let amounts = { h: 0, qTop: 0, qBot: 0 };
 
   const push = () => eye.setPieceOffsets(chopOffsets(amounts), rotation);
@@ -50,6 +53,16 @@ export function createChopStep({ eye, tools, ui, content }) {
       tool.setTip(p.x, p.y, p.z);
     }, onDone);
   }
+
+  // 更新切線並立刻讓核塊照新切線重建。四條接縫：B0 / B2 是第一刀的兩端（核座標 z 軸，φ = 0 / π），
+  // B1 是 q0|q1（核座標 +x，φ = π/2）、B3 是 q2|q3（核座標 −x，φ = 3π/2）。
+  // 這裡的 φ 是旋轉體角度 atan2(x, z)，不是世界的 atan2(z, x)
+  function applyCuts(patch) {
+    cuts = clampCuts(cuts.map((c, k) => patch[k] ?? c));
+    state.nucleusCuts = cuts;
+    eye.setNucleusCuts(cuts);
+  }
+  const localPath = worldPoints => worldPoints.map(p => localPoint(p, rotation));
 
   function dropCrack() {
     crack?.dispose();
@@ -111,9 +124,16 @@ export function createChopStep({ eye, tools, ui, content }) {
     aligning = false;
     crack.setPoints(stroke.points);
     if (n === 1) {
+      // 第一刀拉在核座標 −z（φ = π）：接縫 B2 照病人的路徑，另一端 B0 自動延伸
+      const b2 = boundaryFromPath(localPath(stroke.points), Math.PI);
+      applyCuts({ 0: continueAcross(b2, 0, CONTINUE_SEED), 2: b2 });
       state.nucleusSplit = 1;
       spread(0.8, e => set({ h: HALF_OPEN * e }), () => rotateBy(Math.PI / 2, 1.2, () => startStroke(2)));
     } else {
+      // 第二刀劈的那一半：+x 半（q0|q1）的接縫是 B1（φ = π/2），−x 半（q2|q3）的接縫是 B3（φ = 3π/2）
+      applyCuts(patientSign > 0
+        ? { 1: boundaryFromPath(localPath(stroke.points), Math.PI / 2) }
+        : { 3: boundaryFromPath(localPath(stroke.points), (3 * Math.PI) / 2) });
       const key = halfKey(patientSign);
       spread(0.7, e => set({ [key]: Q_FINAL * e, h: HALF_OPEN + (H_FINAL - HALF_OPEN) * e }), () => {
         ui.showHint(content.hints.chopOther);
@@ -139,6 +159,10 @@ export function createChopStep({ eye, tools, ui, content }) {
         if (Math.hypot(p.x - last.x, p.z - last.z) > 0.02) pts.push(p);
         crack.setPoints(pts);
       }, () => {
+        // 自動那一刀的路徑就是另一條接縫：另一半是 −patientSign 那邊
+        applyCuts(patientSign > 0
+          ? { 3: boundaryFromPath(localPath(path), (3 * Math.PI) / 2) }
+          : { 1: boundaryFromPath(localPath(path), Math.PI / 2) });
         spread(0.6, e => set({ [key]: Q_FINAL * e }), () => {
           state.nucleusSplit = 2;
           state.nucleusRotation = rotation;  // 後面的步驟沿用這個角度
@@ -201,6 +225,9 @@ export function createChopStep({ eye, tools, ui, content }) {
     enter(ctx) {
       state = ctx.state;
       state.nucleusRotation = null;
+      state.nucleusCuts = null;  // 進入時回到直線切線
+      cuts = straightCuts();
+      eye.setNucleusCuts(null);
       phase = 'hold';
       dragging = false;
       aligning = false;

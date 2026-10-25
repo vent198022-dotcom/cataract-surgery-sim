@@ -7,6 +7,7 @@ export function createInitialState(route = 'classic') {
     capsuleOpen: false,               // 前囊片已取出
     nucleusSplit: 0,                  // 0 完整、1 兩半、2 四塊
     nucleusRotation: null,            // 劈核後核繞光軸的角度（自由劈，不固定）；null 表示用預設 π/2
+    nucleusCuts: null,                // 古典劈核後四塊核的切線（見 eye/nucleusCuts.js）；null 表示直線，跳過劈核時由眼球補預設的不規則切線
     pieces: [true, true, true, true], // 四塊水晶體核是否還在
     cortex: true,
     iol: false,

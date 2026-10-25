@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { PROFILES, LENS, CAPSULE_OPENING, CAPSULE_Y, IOL_Y, INCISIONS, LABEL_ANCHORS, bevelIncision } from './anatomy.js';
 import { nucleusLayout } from './layout.js';
+import { straightCuts, defaultIrregularCuts, sectorGeometry } from './nucleusCuts.js';
 import { makeRevolvedPart, Part, inCutRegion } from './revolve.js';
 import { createMaterials, BASE_CORTEX_OPACITY } from './materials.js';
 import { createCapsuleFlap } from './capsuleFlap.js';
@@ -235,15 +236,30 @@ export function createEye(layers) {
   const order = { vitreous: 1, capsuleBag: 2, cortex: 3, capsuleDisc: 4.5, cornea: 5 };
   for (const [key, value] of Object.entries(order)) parts[key].group.traverse(o => { o.renderOrder = value; });
 
-  // 水晶體核：四塊各自是一個旋轉體扇形；outer 放在重心，方便縮放與移動
+  // 水晶體核：四塊各自是兩條切線之間的扇形實體（切線可以不規則，見 nucleusCuts.js）；outer 放在重心，方便縮放與移動
   const nucleusGroup = new THREE.Group();
   root.add(nucleusGroup);
   const pieces = [];
+  const STRAIGHT_CUTS = straightCuts();
+  let nucleusCuts = null;  // 目前套用的切線；null = 直線（STRAIGHT_CUTS）
+
+  // 第 q 塊夾在 B_q 與 B_{q+1} 之間（q = 3 時為 B_0 + 2π）
+  function pieceGeometry(q, cuts) {
+    const a = cuts[q], b = cuts[(q + 1) % 4].map(v => (q === 3 ? v + Math.PI * 2 : v));
+    const { positions, indices } = sectorGeometry(a, b);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    applyPlanarUV(geometry, 3.13);
+    return geometry;
+  }
+
   for (let q = 0; q < 4; q++) {
     const material = M.nucleus.clone();
-    const { full } = makeRevolvedPart(PROFILES.nucleus, material, { phiStart: (q * Math.PI) / 2, phiLength: Math.PI / 2 });
+    const full = new THREE.Group();
+    full.add(new THREE.Mesh(pieceGeometry(q, STRAIGHT_CUTS), material));
     tag(full, 'nucleus');
-    applyUVToMeshes(full, 3.13);
     const phi = ((q + 0.5) * Math.PI) / 2;
     const dir = new THREE.Vector3(Math.sin(phi), 0, Math.cos(phi));
     const centroid = dir.clone().multiplyScalar(PIECE_CENTER_R).setY(LENS.center);
@@ -251,7 +267,7 @@ export function createEye(layers) {
     full.position.copy(centroid).negate();
     outer.add(full);
     nucleusGroup.add(outer);
-    pieces.push({ outer, material, dir, centroid, present: true });
+    pieces.push({ outer, material, dir, centroid, present: true, mesh: full.children[0] });
   }
 
   // 撕囊時的前囊片（會折起的薄膜）；與前囊片共用材質，染色時一起變色
@@ -301,6 +317,7 @@ export function createEye(layers) {
 
   const world = new THREE.Vector3();
   let cutaway = false;
+  let defaultCuts = null;       // 跳關時用的預設不規則切線（只算一次，同一個陣列才不會重建）
   let capsulotomyShape = null;  // 撕囊開口半徑 R(θ)；null = 尚未撕（跳關時才補預設）
 
   // 剖面模式下，重心落在被切掉那 1/4 的碎塊要藏起來
@@ -342,6 +359,16 @@ export function createEye(layers) {
         p.outer.position.set(p.centroid.x + offsets[q].x, p.centroid.y, p.centroid.z + offsets[q].z);
       });
       refreshPieces();
+    },
+
+    // 換四塊核的切線（cuts 為 4 條邊界，見 nucleusCuts.js）；null = 直線。同一個陣列重複傳入不重建
+    setNucleusCuts(cuts) {
+      if (cuts === nucleusCuts) return;
+      nucleusCuts = cuts;
+      pieces.forEach((p, q) => {
+        p.mesh.geometry.dispose();
+        p.mesh.geometry = pieceGeometry(q, cuts || STRAIGHT_CUTS);
+      });
     },
 
     setPiecePresent(i, present) {
@@ -396,6 +423,9 @@ export function createEye(layers) {
         p.outer.scale.setScalar(1);
         eye.setGlow(i, 0);
       });
+      // 古典路線劈核後切線不規則（病人實際劈的路徑）；跳過劈核就用預設的不規則切線；飛秒雷射是直線十字
+      if (!defaultCuts) defaultCuts = defaultIrregularCuts(7);
+      eye.setNucleusCuts(s.nucleusCuts ?? (s.route === 'classic' && s.nucleusSplit >= 1 ? defaultCuts : null));
       eye.setNucleusLayout(nucleusLayout(s));
       parts.cortex.setPresent(s.cortex);
       M.cortex.opacity = BASE_CORTEX_OPACITY;

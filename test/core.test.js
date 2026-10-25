@@ -20,6 +20,7 @@ test('initial state: eye untouched', () => {
   assert.equal(s.laserDone, false);
   assert.equal(s.nucleusSplit, 0);
   assert.equal(s.nucleusRotation, null);
+  assert.equal(s.nucleusCuts, null);
   assert.deepEqual(s.pieces, [true, true, true, true]);
   assert.equal(s.cortex, true);
   assert.equal(s.iol, false);

@@ -73,6 +73,7 @@ export function createPhacoStep({ eye, tools, ui, content, particles }) {
       showCounter();
     },
     exit() {
+      particles.clear();
       probe.hide();
       chopper.hide();
       ui.setCounter(null);

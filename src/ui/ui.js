@@ -44,8 +44,9 @@ export function createUI(content, handlers) {
   otherBtn.addEventListener('click', () => handlers.otherRoute());
 
   const vision = $('vision'), before = $('vision-before'), after = $('vision-after');
-  drawStreet(before.querySelector('canvas'));
-  drawStreet(after.querySelector('canvas'));
+  drawStreet(before.querySelector('canvas'), text.streetSign);
+  drawStreet(after.querySelector('canvas'), text.streetSign);
+  $('inset-frame').querySelector('span').textContent = text.insetLabel;
   after.querySelector('figcaption').textContent = text.after;
 
   const progress = $('progress');
@@ -96,7 +97,7 @@ export function createUI(content, handlers) {
       btn.prev.disabled = index === 0 || isDemoing;
       btn.restart.disabled = orbit || isDemoing;
       btn.next.disabled = last || isDemoing;
-      btn.next.classList.toggle('ready', complete && !last);
+      btn.next.classList.toggle('ready', complete && !last && id !== 'intro');
       btn.demo.textContent = isDemoing ? text.stop : text.demoStep;
       btn.demo.disabled = orbit && !isDemoing;
       btn.demoAll.disabled = isDemoing;

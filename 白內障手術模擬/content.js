@@ -105,6 +105,8 @@ window.CONTENT = {
     stepDone: '完成！請按「下一步」',
   },
   ui: {
+    insetLabel: '剖面圖',
+    streetSign: '眼科診所',
     prev: '上一步',
     restart: '重來這一步',
     next: '下一步',

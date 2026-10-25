@@ -30,6 +30,12 @@ export class Particles {
     }
   }
 
+  clear() {
+    this.life.fill(0);
+    for (let i = 0; i < this.max; i++) this.pos[i * 3 + 1] = -1000;
+    this.geometry.attributes.position.needsUpdate = true;
+  }
+
   update(dt) {
     const k = Math.min(1, dt * 6);
     for (let i = 0; i < this.max; i++) {

@@ -17,7 +17,7 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
   const forceps = tools.forceps;
   const disc = eye.parts.capsuleDisc.group;
   const tweens = new Tweens();
-  let state, phase, grabbed, time;  // phase: 'opening' | 'grab' | 'extract' | 'done'
+  let state, phase, grabbed, holding, time;  // phase: 'opening' | 'grab' | 'extract' | 'done'
 
   const tipY = r => CAPSULE_Y + Math.max(0, r - 3) * 0.55;  // 越靠近切口越往上
 
@@ -58,6 +58,7 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
       state = ctx.state;
       phase = 'opening';
       grabbed = false;
+      holding = false;
       time = 0;
       tweens.clear();
       const inc = INCISIONS.main;
@@ -87,6 +88,7 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
     },
     pointerDown(p) {
       if (phase !== 'grab') return;
+      holding = true;
       const c = clampToDisk(p.x, p.z, TIP_LIMIT);
       tipTo(c.x, c.z);
       if (dist2D(c.x, c.z, disc.position.x, disc.position.z) < GRAB_RADIUS) {
@@ -97,8 +99,21 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
         ui.showHint(content.hints.grabDisc);
       }
     },
-    pointerMove(p) { if (grabbed && phase === 'grab') move(p); },
+    pointerMove(p) {
+      if (phase !== 'grab') return;
+      if (grabbed) { move(p); return; }
+      if (!holding) return;
+      // 按住但還沒夾到：鑷子跟著手指走，靠近囊片時自動夾住
+      const c = clampToDisk(p.x, p.z, TIP_LIMIT);
+      tipTo(c.x, c.z);
+      if (dist2D(c.x, c.z, disc.position.x, disc.position.z) < GRAB_RADIUS) {
+        grabbed = true;
+        tweens.clear();
+        move(p);
+      }
+    },
     pointerUp() {
+      holding = false;
       if (!grabbed || phase !== 'grab') return;
       grabbed = false;
       const from = { x: disc.position.x, y: disc.position.y, z: disc.position.z };

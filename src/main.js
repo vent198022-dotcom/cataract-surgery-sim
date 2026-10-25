@@ -15,7 +15,7 @@ const NO_POINT = { x: 0, y: 0, z: 0 };
 function webglAvailable() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    return !!c.getContext('webgl2');
   } catch {
     return false;
   }
@@ -26,7 +26,17 @@ function isShown(object) {
   return true;
 }
 
+function contentValid() {
+  const c = window.CONTENT;
+  return !!(c && c.steps && c.ui && c.hints && c.layers && c.routes);
+}
+
 function start() {
+  // 衛教文字檔讀取失敗或格式有誤時，顯示 index.html 內建的說明，不要留下空白頁
+  if (!contentValid()) {
+    document.getElementById('fatal').hidden = false;
+    return;
+  }
   let controller, views;
   let labelsOn = true;
 
@@ -48,8 +58,15 @@ function start() {
   }
 
   const stage = document.getElementById('stage');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (err) {
+    console.error(err);
+    ui.fatal(content.ui.noWebGL);
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));  // 舊平板效能考量
   stage.prepend(renderer.domElement);
   const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
 
@@ -90,6 +107,7 @@ function start() {
 
   // 指標：顯微鏡視角時換算成工作平面上的 3D 點；軌道視角時點一下顯示該層說明
   const canvas = renderer.domElement;
+  canvas.addEventListener('contextmenu', e => e.preventDefault());  // 長按不跳出選單
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -158,31 +176,35 @@ function start() {
 
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.05);
-    controller.update(dt);
-    particles.update(dt);
+    try {
+      const dt = Math.min(clock.getDelta(), 0.05);
+      controller.update(dt);
+      particles.update(dt);
 
-    const w = stage.clientWidth, h = stage.clientHeight;
-    const orbit = views.mode === 'orbit';
-    if (orbit) views.controls.update();
+      const w = stage.clientWidth, h = stage.clientHeight;
+      const orbit = views.mode === 'orbit';
+      if (orbit) views.controls.update();
 
-    eye.setCutaway(orbit);
-    renderer.setScissorTest(false);
-    renderer.setViewport(0, 0, w, h);
-    renderer.render(scene, views.camera);
-
-    if (!orbit) {
-      const r = views.insetRect(w, h);
-      eye.setCutaway(true);
-      renderer.setScissorTest(true);
-      renderer.setScissor(r.x, r.y, r.w, r.h);
-      renderer.setViewport(r.x, r.y, r.w, r.h);
-      renderer.render(scene, views.inset);
+      eye.setCutaway(orbit);
       renderer.setScissorTest(false);
-    }
+      renderer.setViewport(0, 0, w, h);
+      renderer.render(scene, views.camera);
 
-    labelRenderer.domElement.hidden = !(orbit && labelsOn);
-    if (orbit && labelsOn) labelRenderer.render(scene, views.camera);
+      if (!orbit) {
+        const r = views.insetRect(w, h);
+        eye.setCutaway(true);
+        renderer.setScissorTest(true);
+        renderer.setScissor(r.x, r.y, r.w, r.h);
+        renderer.setViewport(r.x, r.y, r.w, r.h);
+        renderer.render(scene, views.inset);
+        renderer.setScissorTest(false);
+      }
+
+      labelRenderer.domElement.hidden = !(orbit && labelsOn);
+      if (orbit && labelsOn) labelRenderer.render(scene, views.camera);
+    } catch (err) {
+      console.error(err);  // 單次例外不要讓動畫迴圈永久停住
+    }
   });
 
   window.__sim = { controller, eye, views };  // 除錯與自動驗收用

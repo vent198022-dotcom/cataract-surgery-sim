@@ -1,5 +1,5 @@
 // 程式繪製的街景插畫，用於術前／術後視力對比（不使用外部圖片，沒有版權問題）
-export function drawStreet(canvas) {
+export function drawStreet(canvas, signText) {
   const g = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height, ground = h * 0.62;
 
@@ -41,5 +41,5 @@ export function drawStreet(canvas) {
   g.fillStyle = '#ffffff';
   g.font = 'bold 24px "Microsoft JhengHei", sans-serif';
   g.textBaseline = 'middle';
-  g.fillText('眼科診所', 54, h * 0.66 + 22);
+  g.fillText(signText, 54, h * 0.66 + 22);
 }

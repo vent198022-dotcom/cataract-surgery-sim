@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// orbit：自由旋轉的剖面眼球；microscope：顯微鏡俯視；inset：右下角剖面小視窗
+// orbit：自由旋轉的剖面眼球；microscope：顯微鏡俯視；inset：左下角剖面小視窗
 export function createViews(renderer) {
   const orbit = new THREE.PerspectiveCamera(35, 1, 0.1, 400);
   const micro = new THREE.PerspectiveCamera(32, 1, 0.1, 400);

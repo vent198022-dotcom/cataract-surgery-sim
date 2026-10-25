@@ -47,7 +47,7 @@ export const PROFILES = {
   iris: [[3.2, 9.3], [5.6, 9.0], [5.6, 9.4], [3.2, 9.6]],
   ciliary: [[5.3, 8.7], [5.8, 9.2], [6.3, 9.0], [7.6, 7.8], [8.9, 6.4], [8.6, 6.0], [6.6, 7.0], [5.4, 8.0]],
   vitreous: [...arc(0, 10.88, -90, 30), [6.5, 6.6], ...lensCurve(1.75, Math.PI, 1.04)],
-  cortex: lensCurve(0, Math.PI, 0.98),
+  cortex: shell(lensCurve(0, Math.PI, 0.98), lensCurve(0, Math.PI, NUCLEUS_SCALE + 0.01)),
   nucleus: lensCurve(0, Math.PI, NUCLEUS_SCALE),
   capsuleBag: shell(lensCurve(T_OPEN, Math.PI, 1.03), lensCurve(T_OPEN, Math.PI, 1.0)),
   capsuleDisc: shell(lensCurve(0, T_OPEN, 1.03), lensCurve(0, T_OPEN, 1.0)),

@@ -5,6 +5,7 @@ import { createCapsulorhexisStep } from './capsulorhexis.js';
 import { createChopStep } from './chop.js';
 import { createPhacoStep } from './phaco.js';
 import { createCortexStep } from './cortex.js';
+import { createIolStep } from './iol.js';
 
 const orbitStep = id => baseStep({ id, view: 'orbit', isComplete: () => true, skip: SKIPS[id] });
 // Task 7–12 會逐一把 pendingStep 換成真正的步驟
@@ -20,7 +21,7 @@ export function createSteps(deps) {
     capsuleRemoval: pendingStep('capsuleRemoval'),
     phaco: createPhacoStep(deps),
     cortex: createCortexStep(deps),
-    iol: pendingStep('iol'),
+    iol: createIolStep(deps),
     done: orbitStep('done'),
   };
 }

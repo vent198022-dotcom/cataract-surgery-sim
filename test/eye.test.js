@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRevolvedPart, inCutRegion } from '../src/eye/revolve.js';
-import { nucleusLayout, HALF_GAP, QUARTER_GAP, LASER_GAP } from '../src/eye/layout.js';
-import { PROFILES } from '../src/eye/anatomy.js';
+import { nucleusLayout, chopOffsets, H_FINAL, Q_FINAL, HALF_GAP, QUARTER_GAP, LASER_GAP } from '../src/eye/layout.js';
+import { PROFILES, nucleusTopY } from '../src/eye/anatomy.js';
 import { createInitialState } from '../src/core/state.js';
 
 const square = [[0, 0], [1, 0], [1, 1], [0, 1]];
@@ -43,4 +43,27 @@ test('every profile has at least 3 points with r >= 0', () => {
     assert.ok(profile.length >= 3, name);
     for (const [r] of profile) assert.ok(r >= 0, name);
   }
+});
+
+test('chopOffsets at the final values equals the split-2 layout', () => {
+  const offsets = chopOffsets({ h: H_FINAL, qTop: Q_FINAL, qBot: Q_FINAL });
+  assert.equal(offsets.length, 4);
+  for (let q = 0; q < 4; q++) {
+    const phi = ((q + 0.5) * Math.PI) / 2;
+    const dx = Math.sin(phi), dz = Math.cos(phi);
+    const x = Math.sign(dx) * HALF_GAP + dx * QUARTER_GAP, z = dz * QUARTER_GAP;
+    assert.ok(Math.abs(offsets[q].x - x) < 1e-9, `x${q}`);
+    assert.ok(Math.abs(offsets[q].z - z) < 1e-9, `z${q}`);
+  }
+});
+
+test('chopOffsets moves top and bottom pairs independently', () => {
+  const o = chopOffsets({ h: 0.3, qTop: 0.2, qBot: 0 });
+  assert.deepEqual(o.map(p => [p.x, p.z]), [[0.3, 0.2], [0.3, -0.2], [-0.3, -0], [-0.3, 0]]);
+});
+
+test('nucleusTopY follows the nucleus front surface', () => {
+  assert.ok(Math.abs(nucleusTopY(0) - (8 + 0.68 * 1.5)) < 1e-9);
+  assert.ok(Math.abs(nucleusTopY(3.2) - 8) < 1e-9);
+  assert.ok(Math.abs(nucleusTopY(5) - 8) < 1e-9);
 });

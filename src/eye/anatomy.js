@@ -70,3 +70,9 @@ export const LABEL_ANCHORS = {
   opticNerve: [-0.8, -15, 0],
   iol: [-2.0, 8.6, 0],
 };
+
+// 核前表面在離光軸 r 處的高度（核為 LENS 縮放 NUCLEUS_SCALE 的橢球）
+export function nucleusTopY(r) {
+  const R = NUCLEUS_SCALE * LENS.radius;
+  return LENS.center + NUCLEUS_SCALE * LENS.front * Math.sqrt(Math.max(0, 1 - (r / R) ** 2));
+}

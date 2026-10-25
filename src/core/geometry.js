@@ -65,3 +65,10 @@ export function createLineTracker(a, b, bins = 20, tolerance = 0.9) {
     return Math.floor(t * bins);
   });
 }
+
+// 從索引 0 起連續為 true 的個數（不繞回）
+export function leadingRun(hits) {
+  let n = 0;
+  while (n < hits.length && hits[n]) n++;
+  return n;
+}

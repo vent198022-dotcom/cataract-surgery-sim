@@ -242,6 +242,15 @@ export function createEye(layers) {
       refreshPieces();
     },
 
+    // 劈核動畫用：offsets 為每塊核在核座標下的 { x, z } 位移（見 chopOffsets）
+    setPieceOffsets(offsets, rotation = 0) {
+      nucleusGroup.rotation.y = rotation;
+      pieces.forEach((p, q) => {
+        p.outer.position.set(p.centroid.x + offsets[q].x, p.centroid.y, p.centroid.z + offsets[q].z);
+      });
+      refreshPieces();
+    },
+
     setPiecePresent(i, present) {
       pieces[i].present = present;
       labels.nucleus.visible = pieces.some(p => p.present);

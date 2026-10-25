@@ -62,7 +62,7 @@ test('content covers every step, layer and hint', () => {
   for (const id of ['cornea', 'anteriorChamber', 'iris', 'capsule', 'cortex', 'nucleus', 'zonules', 'ciliary', 'vitreous', 'retina', 'choroid', 'sclera', 'opticNerve', 'iol']) {
     assert.ok(c.layers[id]?.name && c.layers[id].desc, `layer ${id}`);
   }
-  for (const key of ['followLine', 'followCircle', 'moveToMarker', 'moveToPiece', 'grabDisc', 'pushInjector', 'cleared', 'stepDone']) assert.ok(c.hints[key], key);
+  for (const key of ['followLine', 'followCircle', 'moveToMarker', 'moveToPiece', 'grabDisc', 'pushInjector', 'cleared', 'chopOther', 'stepDone']) assert.ok(c.hints[key], key);
   for (const key of ['prev', 'restart', 'next', 'demoStep', 'demoAll', 'stop', 'labels', 'resetView', 'chooseRoute', 'otherRoute', 'before', 'after', 'cloudy', 'noWebGL', 'insetLabel', 'streetSign']) assert.ok(c.ui[key], key);
   assert.ok(c.routes.classic.name && c.routes.femto.name);
   assert.ok(c.routeNotes.femtoPhaco);

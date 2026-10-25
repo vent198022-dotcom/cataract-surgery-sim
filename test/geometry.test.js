@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dist2D, clampToDisk, shaftDirection, createArcTracker, createLineTracker } from '../src/core/geometry.js';
+import { dist2D, clampToDisk, shaftDirection, createArcTracker, createLineTracker, leadingRun } from '../src/core/geometry.js';
 
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≈ ${b}`);
 
@@ -55,4 +55,11 @@ test('line tracker with coincident endpoints never reports hits', () => {
   assert.equal(t.add(1, 1), false);
   assert.equal(t.add(1.5, 1), false);
   assert.equal(t.coverage(), 0);
+});
+
+test('leadingRun counts consecutive trues from the start', () => {
+  assert.equal(leadingRun([true, true, false, true]), 2);
+  assert.equal(leadingRun([false, true]), 0);
+  assert.equal(leadingRun([true, true]), 2);
+  assert.equal(leadingRun([]), 0);
 });

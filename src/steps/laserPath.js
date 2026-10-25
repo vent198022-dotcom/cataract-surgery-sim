@@ -5,6 +5,20 @@ const FRAG_Y = 8.9;
 const FRAG_HALF = 3;
 const MIN_INCISION_TIME = 1.2;
 
+// 把某一段的點就地打亂順序（固定亂數種子，每次載入都一樣）：
+// 相鄰點只差 0.1mm，依序落下會擠成一條虛線；打亂後雷射點散落整個圖形，看起來才像下雨
+export function scatterPoints(positions, start, count, seed = 1) {
+  let s = seed >>> 0;
+  const rand = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
+  for (let i = count - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    for (let a = 0; a < 3; a++) {
+      const p = (start + i) * 3 + a, q = (start + j) * 3 + a;
+      [positions[p], positions[q]] = [positions[q], positions[p]];
+    }
+  }
+}
+
 // 依臨床順序：囊膜切開 → 水晶體核碎裂（十字，兩條線各自走完）→ 角膜切口（主切口、側切口）
 export function buildLaserPath() {
   const positions = [];

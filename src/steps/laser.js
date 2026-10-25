@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { baseStep } from './common.js';
 import { SKIPS } from '../core/skips.js';
 import { ease } from '../core/tween.js';
-import { buildLaserPath, scheduleRain, landedCount, rainStreaks } from './laserPath.js';
+import { bevelDiagramSVG } from '../ui/bevelDiagram.js';
+import { buildLaserPath, scatterPoints, scheduleRain, landedCount, rainStreaks } from './laserPath.js';
 
 // 時間軸（秒）：對接 → OCT 掃描 → 雷射雨 A（囊膜切開 + 核碎裂）→ 鏡頭拉近 → 雨 B（主切口）→ 停留看斜切面
 // → 鏡頭轉到側切口 → 雨 C（側切口）→ 回正、接觸鏡升起
@@ -15,14 +16,16 @@ const T = {
 };
 const CAM = {
   oblique: { position: [-16, 27, 20], target: [0, 9.5, 0] },
-  mainClose: { position: [5.4, 11.6, -6.5], target: [5.4, 10.3, 0] },
-  sideClose: { position: [-6.5, 11.6, -5.4], target: [0, 10.3, -5.4] },
+  // 斜上方看切口位置與落下的雷射；切口的角度另以右上角的剖面示意圖呈現
+  mainClose: { position: [13, 17, -9], target: [5.3, 10.6, 0] },
+  sideClose: { position: [-8, 17, -13], target: [0, 10.6, -5.3] },
 };
 const DOCK_TOP = 30;
 const DOCK_Y = 13.3;
-const RAIN_SPEED = 45;     // 光條下落速度（mm/s）
+const RAIN_SPEED = 14;     // 光條下落速度（mm/s）：慢一點、從高處落下，空中同時有十幾道光條才像下雨
+const RAIN_TOP = DOCK_Y + 6; // 光條從雷射頭（對接環蓋錐頂端）出發
 const STREAK_POOL = 120;
-const STREAK_LEN = 0.9;
+const STREAK_LEN = 1.4;
 const FLASH_TIME = 0.12;   // 落點閃光持續秒數
 
 // 雷射打過之處留下的空化小氣泡，依序顯現
@@ -99,6 +102,10 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
   scan.position.y = 10;
   scan.renderOrder = 12;
   const path = buildLaserPath();
+  // 囊膜切開與核碎裂的雷射點打亂順序，像雨點散落；角膜切口仍沿切口線依序打
+  path.segments.forEach((seg, k) => {
+    if (seg.phase !== 'incision') scatterPoints(path.positions, seg.start, seg.count, 101 + k);
+  });
   // 三個打點時段：A 囊膜切開 + 核碎裂、B 主切口、C 側切口（路徑順序即時間順序）
   const incIdx = path.segments.map((g, i) => (g.phase === 'incision' ? i : -1)).filter(i => i >= 0);
   const land = scheduleRain(path.segments, [
@@ -118,7 +125,7 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
   function updateRain() {
     const landed = landedCount(land, t);
     dots.geometry.setDrawRange(0, landed);
-    const falling = rainStreaks(path.positions, land, t, DOCK_Y, RAIN_SPEED);
+    const falling = rainStreaks(path.positions, land, t, RAIN_TOP, RAIN_SPEED);
     streaks.pool.forEach((streak, k) => {
       const f = falling[k];
       streak.visible = !!f;
@@ -152,6 +159,7 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
       scene.add(scan, dots, streaks.group, flash);
     },
     exit() {
+      ui.showDiagram(null);
       dock.visible = false;
       streaks.group.visible = flash.visible = false;
       scene.remove(scan, dots, streaks.group, flash);
@@ -168,6 +176,7 @@ export function createLaserStep({ scene, eye, tools, ui, content, views }) {
         state.incisions.main = true;
         eye.applyState(state);
         ui.showHint(content.hints.bevel, 4000);
+        ui.showDiagram(bevelDiagramSVG(content.ui));
       });
       once('fly3', T.sideFly, () => views.flyTo(CAM.sideClose, 0.8));
       once('side', T.sideEnd, () => {

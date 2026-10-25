@@ -134,3 +134,19 @@ test('rainStreaks fall vertically from the dock to the target and vanish on land
   assert.equal(rainStreaks(positions, land, 5, dockY, speed).length, 0);  // 抵達當下就消失
   assert.equal(rainStreaks(positions, land, 5.5, dockY, speed).length, 0);
 });
+
+test('scatterPoints shuffles one segment in place, deterministically, keeping the same points', async () => {
+  const { scatterPoints } = await import('../src/steps/laserPath.js');
+  const make = () => [9, 9, 9, ...Array.from({ length: 10 }, (_, i) => [i, 0, -i]).flat(), 7, 7, 7];
+  const a = make(), b = make();
+  scatterPoints(a, 1, 10, 42);
+  scatterPoints(b, 1, 10, 42);
+  assert.deepEqual(a, b);
+  assert.deepEqual(a.slice(0, 3), [9, 9, 9]);
+  assert.deepEqual(a.slice(-3), [7, 7, 7]);
+  const pts = i => a.slice(3 + i * 3, 6 + i * 3);
+  const xs = Array.from({ length: 10 }, (_, i) => pts(i)[0]);
+  assert.notDeepEqual(xs, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual([...xs].sort((p, q) => p - q), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  for (let i = 0; i < 10; i++) assert.equal(pts(i)[2], -pts(i)[0]);
+});

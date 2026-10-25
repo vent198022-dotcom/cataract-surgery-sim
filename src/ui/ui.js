@@ -107,6 +107,7 @@ export function createUI(content, handlers) {
       btn.labels.hidden = !orbit;
       btn.resetView.hidden = !orbit;
       if (stepChanged) {
+        $('diagram').hidden = true;
         $('layer-info').hidden = true;
         clearTimeout(hintTimer);
         $('hint').hidden = true;
@@ -134,6 +135,13 @@ export function createUI(content, handlers) {
       $('layer-name').textContent = content.layers[id].name;
       $('layer-desc').textContent = content.layers[id].desc;
       el.hidden = false;
+    },
+
+    // 剖面示意圖（SVG 字串）；null 收起
+    showDiagram(svg) {
+      const el = $('diagram');
+      el.innerHTML = svg ?? '';
+      el.hidden = !svg;
     },
 
     setCounter(message) {

@@ -75,7 +75,7 @@ function tag(object, layerId) {
 
 // 飛秒雷射的倒嵌角切口（130°）：在切口的徑向平面上，沿角膜緣切線拉出一片從外口斜到內口的薄片，
 // 外口與內口各畫一條亮線，讓切口開口清楚可見
-const BEVEL_R_OUTER = 5.1;
+const BEVEL_R_OUTER = 5.5;  // 與器械進入點、雷射落點（INCISIONS r=5.5）一致
 const BEVEL_ANGLE = 130;
 function makeBevelIncision(inc) {
   const len = Math.hypot(inc.x, inc.z);
@@ -97,8 +97,14 @@ function makeBevelIncision(inc) {
     new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }),
   );
   edges.geometry.setIndex([0, 1, 2, 3]);  // 外口、內口兩條線
+  // 沿切口斜面（外口→內口）畫幾條有粗細的線：從切線方向側看時薄片會變成一條線，這些線讓斜角仍看得出來
+  const profileMat = new THREE.MeshBasicMaterial({ color: 0x7a1d1d });
+  const profiles = [-half, 0, half].map(d => new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.LineCurve3(new THREE.Vector3(...at(outer, d)), new THREE.Vector3(...at(inner, d))), 1, 0.05, 6, false),
+    profileMat,
+  ));
   const group = new THREE.Group();
-  group.add(slab, edges);
+  group.add(slab, edges, ...profiles);
   group.renderOrder = 5.5;
   group.traverse(o => { o.renderOrder = 5.5; });
   tag(group, 'cornea');
@@ -222,6 +228,13 @@ export function createEye(layers) {
     incisionMarks[key] = mesh;
   }
 
+  // 飛秒路線用的倒嵌角切口（傳統路線用上面的表面切口記號）
+  const bevelIncisions = {};
+  for (const [key, inc] of Object.entries(INCISIONS)) {
+    bevelIncisions[key] = makeBevelIncision(inc);
+    root.add(bevelIncisions[key]);
+  }
+
   const iol = createIol(M);
   root.add(iol.group);
 
@@ -303,8 +316,11 @@ export function createEye(layers) {
     setCortexOpacity(opacity) { M.cortex.opacity = opacity; },
 
     applyState(s) {
-      incisionMarks.main.visible = s.incisions.main;
-      incisionMarks.side.visible = s.incisions.side;
+      const femto = s.route === 'femto';
+      incisionMarks.main.visible = !femto && s.incisions.main;
+      incisionMarks.side.visible = !femto && s.incisions.side;
+      bevelIncisions.main.visible = femto && s.incisions.main;
+      bevelIncisions.side.visible = femto && s.incisions.side;
       parts.capsuleDisc.setPresent(!s.capsuleOpen);
       parts.capsuleDisc.group.position.set(0, 0, 0);
       parts.capsuleDisc.group.scale.setScalar(1);

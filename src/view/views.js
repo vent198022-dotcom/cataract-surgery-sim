@@ -119,7 +119,11 @@ export function createViews(renderer) {
       }
     },
     resize(w, h) {
-      orbit.aspect = micro.aspect = w / h;
+      const aspect = w / h;
+      orbit.aspect = micro.aspect = aspect;
+      // 直立的手機畫面很窄：自動拉遠（zoom < 1 視野變寬），眼球才放得進畫面寬度
+      orbit.zoom = Math.min(1, aspect * 1.1);
+      micro.zoom = Math.min(1, aspect * 1.18);
       orbit.updateProjectionMatrix();
       micro.updateProjectionMatrix();
     },

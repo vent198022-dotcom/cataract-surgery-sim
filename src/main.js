@@ -10,6 +10,7 @@ import { otherRoute } from './core/routes.js';
 import { createSteps } from './steps/index.js';
 
 const content = window.CONTENT;
+const GRIP_PX = 70;  // 觸控時尖端與手指的距離（像素）
 const NO_POINT = { x: 0, y: 0, z: 0 };
 
 function webglAvailable() {
@@ -142,15 +143,25 @@ function start() {
     controller.pointer('up', lastPoint);
   }
 
-  function aimRay(e) {
+  function aimRay(e, offsetX = 0) {
     const r = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ndc.set(((e.clientX + offsetX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     raycaster.setFromCamera(ndc, views.camera);
   }
-  function workPoint(e) {
-    aimRay(e);
+  function planeHit(e, offsetX = 0) {
+    aimRay(e, offsetX);
     plane.constant = -controller.step.workY;
     return raycaster.ray.intersectPlane(plane, hit) ? { x: hit.x, y: hit.y, z: hit.z } : null;
+  }
+  // 觸控：手指按的是器械握柄，尖端在手指前方約 GRIP_PX 像素，才不會被手指擋住（滑鼠游標很細，維持指哪打哪）
+  function workPoint(e) {
+    const p = planeHit(e);
+    const tool = controller.step.gripTool;
+    if (!p || !tool || e.pointerType === 'mouse') return p;
+    const q = planeHit(e, GRIP_PX);
+    if (!q) return p;
+    const tip = tool.tipForGrip(p.x, p.z, Math.hypot(q.x - p.x, q.z - p.z));
+    return { x: tip.x, y: p.y, z: tip.z };
   }
   function pickLayer(e) {
     aimRay(e);
@@ -162,7 +173,7 @@ function start() {
     if (!e.isPrimary || e.button !== 0) return;
     downAt = { x: e.clientX, y: e.clientY };
     if (views.mode !== 'microscope' || views.inspecting) return;
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* 指標已不存在時忽略 */ }
     pressed = true;
     const p = workPoint(e);
     if (p) {

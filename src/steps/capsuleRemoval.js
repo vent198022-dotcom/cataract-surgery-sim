@@ -53,6 +53,7 @@ export function createCapsuleRemovalStep({ eye, tools, ui, content }) {
 
   return baseStep({
     id: 'capsuleRemoval',
+    gripTool: forceps,  // 觸控時手指拖的是這支器械的握柄
     workY: CAPSULE_Y,
     enter(ctx) {
       state = ctx.state;

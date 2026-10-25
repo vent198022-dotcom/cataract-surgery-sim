@@ -52,6 +52,7 @@ export function createIolStep({ eye, tools, ui, content }) {
 
   return baseStep({
     id: 'iol',
+    gripTool: injector,  // 觸控時手指拖的是這支器械的握柄
     workY: WORK_Y,
     enter(ctx) {
       state = ctx.state;

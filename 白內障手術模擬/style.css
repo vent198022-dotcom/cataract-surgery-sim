@@ -58,3 +58,29 @@ button.route, #other-route { background: #e8f4fb; border-color: var(--accent); f
 button.toggle.on { background: #e8f4fb; border-color: var(--accent); }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(18,163,107,0.25); } }
 #fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 40px; background: var(--bg); color: #fff; font-size: 1.2rem; text-align: center; z-index: 10; }
+
+/* 手機（窄螢幕）：說明區最多佔一半高度、按鈕排成一列可左右滑，眼球才有足夠空間 */
+@media (max-width: 700px) {
+  :root { font-size: 16px; }
+  #topbar { gap: 10px; padding: 6px 10px; }
+  #topbar h1 { font-size: 0.95rem; }
+  #progress li { padding: 4px 8px; font-size: 0.75rem; }
+  #panel { flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 8px 10px; max-height: 46vh; overflow-y: auto; }
+  #step-text { flex: none; width: 100%; }
+  #step-title { font-size: 1rem; margin-bottom: 2px; }
+  #step-body p { margin: 2px 0; font-size: 0.9rem; line-height: 1.4; }
+  #route-choice { margin-top: 6px; gap: 6px; }
+  #controls { flex: none; width: 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
+  button { flex: none; min-height: 44px; padding: 0 12px; font-size: 0.9rem; white-space: nowrap; }
+  #other-route { white-space: normal; }
+  .label { font-size: 0.7rem; }
+  #vision { top: 8px; right: 8px; gap: 6px; }
+  #vision figure { padding: 4px; }
+  #vision canvas { width: 120px; height: 75px; }
+  #vision figcaption { font-size: 0.75rem; }
+  #layer-info { left: 8px; top: 8px; max-width: 70%; padding: 8px 10px; }
+  #layer-info p { font-size: 0.85rem; }
+  #counter { top: 8px; right: 8px; padding: 6px 10px; font-size: 0.85rem; }
+  #hint { top: 8px; width: max-content; max-width: 90%; padding: 8px 12px; font-size: 0.85rem; }
+  #diagram { top: 8px; right: 8px; width: 60%; }
+}

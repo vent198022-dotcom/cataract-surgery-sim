@@ -50,6 +50,7 @@ export function createIncisionStep({ scene, eye, tools, ui, content }) {
 
   return baseStep({
     id: 'incision',
+    gripTool: blade,  // 觸控時手指拖的是這支器械的握柄
     workY: BLADE_Y,
     enter(ctx) {
       state = ctx.state;

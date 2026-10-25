@@ -58,6 +58,7 @@ export function createPhacoStep({ eye, tools, ui, content, particles }) {
 
   return baseStep({
     id: 'phaco',
+    gripTool: probe,  // 觸控時手指拖的是這支器械的握柄
     workY: WORK_Y,
     enter(ctx) {
       state = ctx.state;

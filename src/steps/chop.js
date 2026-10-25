@@ -60,6 +60,7 @@ export function createChopStep({ eye, tools, ui, content }) {
   function applyCuts(patch) {
     cuts = clampCuts(cuts.map((c, k) => patch[k] ?? c));
     state.nucleusCuts = cuts;
+    eye.rememberChopCuts(cuts);
     eye.setNucleusCuts(cuts);
   }
   const localPath = worldPoints => worldPoints.map(p => localPoint(p, rotation));
@@ -227,6 +228,7 @@ export function createChopStep({ eye, tools, ui, content }) {
       state.nucleusRotation = null;
       state.nucleusCuts = null;  // 進入時回到直線切線
       cuts = straightCuts();
+      eye.rememberChopCuts(null);
       eye.setNucleusCuts(null);
       phase = 'hold';
       dragging = false;

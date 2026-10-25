@@ -242,6 +242,8 @@ export function createEye(layers) {
   const pieces = [];
   const STRAIGHT_CUTS = straightCuts();
   let nucleusCuts = null;  // 目前套用的切線；null = 直線（STRAIGHT_CUTS）
+  // 病人最後一次劈出的切線：按「下一步」時狀態會從跳過規則重建，切線不在其中，所以由眼睛記住
+  let chopCuts = null;
 
   // 第 q 塊夾在 B_q 與 B_{q+1} 之間（q = 3 時為 B_0 + 2π）
   function pieceGeometry(q, cuts) {
@@ -362,6 +364,9 @@ export function createEye(layers) {
     },
 
     // 換四塊核的切線（cuts 為 4 條邊界，見 nucleusCuts.js）；null = 直線。同一個陣列重複傳入不重建
+    // 劈核步驟記下（或清掉）病人劈出的切線，之後的步驟沿用
+    rememberChopCuts(cuts) { chopCuts = cuts; },
+
     setNucleusCuts(cuts) {
       if (cuts === nucleusCuts) return;
       nucleusCuts = cuts;
@@ -425,7 +430,7 @@ export function createEye(layers) {
       });
       // 古典路線劈核後切線不規則（病人實際劈的路徑）；跳過劈核就用預設的不規則切線；飛秒雷射是直線十字
       if (!defaultCuts) defaultCuts = defaultIrregularCuts(7);
-      eye.setNucleusCuts(s.nucleusCuts ?? (s.route === 'classic' && s.nucleusSplit >= 1 ? defaultCuts : null));
+      eye.setNucleusCuts(s.nucleusCuts ?? (s.route === 'classic' && s.nucleusSplit >= 1 ? (chopCuts ?? defaultCuts) : null));
       eye.setNucleusLayout(nucleusLayout(s));
       parts.cortex.setPresent(s.cortex);
       M.cortex.opacity = BASE_CORTEX_OPACITY;

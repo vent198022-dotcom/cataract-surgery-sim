@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { nucleusTopY } from './anatomy.js';
 
 const SAMPLES = 24;
-const TUBE_RADIUS = 0.07;
+const TUBE_RADIUS = 0.17;  // 比劈核器桿身（0.12）粗，拉的時候裂縫從桿身兩側露出來
 const RADIAL = 6;
 const crackMat = new THREE.MeshBasicMaterial({ color: 0x3d2610 });  // 不透明，保持深度寫入
 

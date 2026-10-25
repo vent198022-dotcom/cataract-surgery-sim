@@ -129,6 +129,7 @@ window.CONTENT = {
     resetView: '視角重置',
     chooseRoute: '選擇手術方式：',
     otherRoute: '換另一種方式再看一次',
+    home: '回到首頁',
     before: '手術前',
     after: '手術後',
     cloudy: '白內障時看出去的樣子',

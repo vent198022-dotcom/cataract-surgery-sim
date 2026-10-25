@@ -27,6 +27,7 @@ export function createUI(content, handlers) {
     labels: button(text.labels, () => handlers.toggleLabels(), 'toggle'),
     resetView: button(text.resetView, () => handlers.resetView()),
     next: button(text.next, () => handlers.next(), 'primary'),
+    home: button(text.home, () => handlers.home(), 'primary'),  // 只在手術完成畫面出現
   };
 
   const routeBox = $('route-choice');
@@ -98,6 +99,9 @@ export function createUI(content, handlers) {
       btn.prev.disabled = index === 0 || isDemoing;
       btn.restart.disabled = orbit || isDemoing;
       btn.next.disabled = last || isDemoing;
+      btn.next.hidden = last;  // 最後一步改顯示「回到首頁」
+      btn.home.hidden = !last;
+      btn.home.disabled = isDemoing;
       btn.next.classList.toggle('ready', complete && !last && id !== 'intro');
       btn.demo.textContent = isDemoing ? text.stop : text.demoStep;
       btn.demo.disabled = orbit && !isDemoing;

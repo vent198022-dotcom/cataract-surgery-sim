@@ -65,7 +65,7 @@ test('content covers every step, layer and hint', () => {
     assert.ok(c.layers[id]?.name && c.layers[id].desc, `layer ${id}`);
   }
   for (const key of ['followLine', 'followCircle', 'moveToMarker', 'moveToPiece', 'grabDisc', 'pushInjector', 'cleared', 'chopOther', 'stepDone', 'inspect', 'bevel', 'tearTooWide', 'closeLoop', 'chopFromEdge']) assert.ok(c.hints[key], key);
-  for (const key of ['prev', 'restart', 'next', 'demoStep', 'demoAll', 'stop', 'labels', 'resetView', 'inspect', 'inspectDone', 'chooseRoute', 'otherRoute', 'before', 'after', 'cloudy', 'noWebGL', 'insetLabel', 'streetSign', 'bevelTitle', 'bevelAngle', 'bevelCenter', 'bevelLimbus']) assert.ok(c.ui[key], key);
+  for (const key of ['prev', 'restart', 'next', 'demoStep', 'demoAll', 'stop', 'labels', 'resetView', 'inspect', 'inspectDone', 'chooseRoute', 'otherRoute', 'home', 'before', 'after', 'cloudy', 'noWebGL', 'insetLabel', 'streetSign', 'bevelTitle', 'bevelAngle', 'bevelCenter', 'bevelLimbus']) assert.ok(c.ui[key], key);
   assert.ok(c.routes.classic.name && c.routes.femto.name);
   assert.ok(c.routeNotes.femtoPhaco);
 });

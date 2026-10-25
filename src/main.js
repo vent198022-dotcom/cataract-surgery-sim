@@ -49,6 +49,7 @@ function start() {
     stopDemo: () => controller.stopDemo(),
     toggleLabels: () => { labelsOn = !labelsOn; ui.setLabelsOn(labelsOn); },
     resetView: () => views.resetOrbit(),
+    home: () => { controller.goTo(0); views.resetOrbit(); },
     chooseRoute: route => { controller.setRoute(route); controller.goTo(1); },
     otherRoute: () => { controller.setRoute(otherRoute(controller.route)); controller.goTo(1); },
     toggleInspect: () => {

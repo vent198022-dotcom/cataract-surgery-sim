@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 照片馬賽克立方體</title>
+
+<style>
+  /* ===== 全域：深黑底 + 無捲軸 ===== */
+  :root {
+    --bg: #0a0a0a;
+    --panel: rgba(255, 255, 255, 0.06);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --text: rgba(255, 255, 255, 0.92);
+    --text-dim: rgba(255, 255, 255, 0.45);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 3D 畫布鋪滿整個視窗，所有 UI 浮在它上面 */
+  #scene {
+    position: fixed;
+    inset: 0;
+    display: block;
+    cursor: grab;
+  }
+  #scene:active { cursor: grabbing; }
+
+  /* ===== 左上角控制面板（毛玻璃） ===== */
+  #panel {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 10;
+    padding: 18px 20px;
+    width: 258px;
+    border-radius: 14px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  }
+
+  #panel h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* 真正的 file input 藏起來，用 label 當作優雅的按鈕 */
+  #file { display: none; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: background 0.22s ease, border-color 0.22s ease, transform 0.12s ease;
+  }
+  .btn:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.4); }
+  .btn:active { transform: scale(0.975); }
+
+  .sub {
+    margin-top: 7px;
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--text-dim);
+  }
+
+  .field { margin-top: 16px; }
+
+  .field-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .field-label b { color: var(--text); font-weight: 600; }
+
+  /* 解析度滑桿 */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border: none; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+
+  #status {
+    margin-top: 16px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    min-height: 2.2em;
+  }
+
+  /* ===== 右下角互動提示 ===== */
+  #hint {
+    position: fixed;
+    right: 26px;
+    bottom: 24px;
+    z-index: 10;
+    text-align: right;
+    font-size: 12.5px;
+    line-height: 1.8;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.38);
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  #hint b { color: rgba(255, 255, 255, 0.72); font-weight: 500; }
+
+  /* ===== 退回全景按鈕：只在推進時出現 ===== */
+  #back {
+    position: fixed;
+    left: 50%;
+    bottom: 30px;
+    transform: translate(-50%, 14px);
+    z-index: 10;
+    padding: 10px 22px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(10, 10, 10, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.35s ease, background 0.2s ease;
+  }
+  #back.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #back:hover { background: rgba(255, 255, 255, 0.16); }
+
+  /* 拖放整頁上傳時的高亮外框 */
+  #dropzone {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 2px dashed rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.04);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    pointer-events: none;
+  }
+  #dropzone.on { display: flex; }
+</style>
+</head>
+
+<body>
+  <!-- 3D 渲染畫布 -->
+  <canvas id="scene"></canvas>
+
+  <!-- 控制面板 -->
+  <div id="panel">
+    <h1>Photo Mosaic Cube</h1>
+
+    <input type="file" id="file" accept="image/*" multiple>
+    <label class="btn" for="file">上傳照片</label>
+    <div class="sub">可一次選多張，依序貼到六個面</div>
+
+    <div class="field">
+      <div class="field-label"><span>每面解析度</span><b id="gridVal">26 × 26</b></div>
+      <input type="range" id="grid" min="8" max="40" step="1" value="26">
+    </div>
+
+    <div id="status">正在生成預設立方體…</div>
+  </div>
+
+  <!-- 互動提示 -->
+  <div id="hint">
+    拖曳 <b>旋轉</b> · 滾輪 <b>縮放</b><br>
+    點擊任一方塊 <b>推進放大</b><br>
+    點擊黑色背景或按 <b>Esc</b> 退回全景
+  </div>
+
+  <!-- 推進後才出現的退回鈕 -->
+  <button id="back">← 退回全景</button>
+
+  <!-- 拖放提示 -->
+  <div id="dropzone">放開以載入這些照片</div>
+
+  <!-- Three.js 與 GSAP 採 ESM + import map 從 CDN 載入 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm"
+    }
+  }
+  </script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { gsap } from 'gsap';
+
+/* =========================================================================
+   1. 設定值（全部集中在這裡，方便日後調整）
+   ========================================================================= */
+const CONFIG = {
+  GRID: 26,            // 每一面的網格解析度（整個立方體有 6 × GRID² 個方塊）
+  CUBE_SIZE: 30,       // 立方體的邊長；與 GRID 無關，所以不論格數多少相機都不用重算
+  TILE_RATIO: 0.88,    // 方塊佔一格的比例，剩下的 0.12 就是方塊之間的間距
+  TILE_DEPTH: 0.5,     // 方塊厚度（相對於一格的寬度）
+  TEXTURE_POOL: 48,    // 小圖貼圖池的張數。這同時也是繪製批次數：
+                       // 所有方塊依貼圖分成 48 個 InstancedMesh，整個立方體只畫 48 批
+  TEXTURE_WASH: 0.42,  // 小圖洗白程度（0～1）。map 會與顏色相乘，
+                       // 小圖太暗會把大圖壓死；洗白一點才能遠看清楚、近看仍有細節
+  CAM_MARGIN: 1.1,     // 全景時立方體四周的留白倍率
+  FOCUS_MARGIN: 1.15,  // 推進後方塊四周的留白倍率（1 = 剛好貼齊畫面邊緣）
+  WAVE_AMPLITUDE: 0.3, // 微幅波浪的起伏幅度（沿著該面的法線方向，以一格寬度為單位）
+  WAVE_SPEED: 1.15,    // 波浪速度
+
+  // 閒置時的自動轉動方式：
+  //   'sway' = 以正面為中心左右緩緩擺盪（預設。隨時看得懂，又一直有立體感）
+  //   'spin' = 繞著 Y 軸持續轉滿 360 度，四個側面輪流轉到正面來
+  //   'none' = 完全不自動轉，只靠使用者拖曳
+  IDLE_MOTION: 'sway',
+  SWAY_YAW: 30,        // sway 的左右最大角度（度）
+  SWAY_PITCH: 12,      // sway 的上下最大角度（度）
+  SWAY_SPEED: 0.22,    // sway 速度
+  SWAY_EASE: 0.006,    // sway 趨近速率。刻意放得很慢，使用者自己轉開之後
+                       // 是「緩緩飄回」，而不是被一把扯回去
+  SPIN_SPEED: 0.5,     // spin 模式的轉速（OrbitControls 單位）
+  IDLE_RESUME_MS: 2500,// 停止操作幾毫秒後恢復自動轉動
+  MAX_PHOTOS: 6        // 立方體有六個面
+};
+
+/* 立方體的六個面。
+   每個面定義「面心位置」與「旋轉」，旋轉後該面的本地 +Z 會正好指向外側。
+   於是面內的方塊就能沿用最單純的 XY 平面排列，
+   而波浪（本地 Z 位移）與翻轉（本地 Y 軸旋轉）也自動對齊該面的方向。 */
+const FACES = [
+  { key: 'front',  pos: [0, 0, 1],  rot: [0, 0, 0] },
+  { key: 'right',  pos: [1, 0, 0],  rot: [0, Math.PI / 2, 0] },
+  { key: 'back',   pos: [0, 0, -1], rot: [0, Math.PI, 0] },
+  { key: 'left',   pos: [-1, 0, 0], rot: [0, -Math.PI / 2, 0] },
+  { key: 'top',    pos: [0, 1, 0],  rot: [-Math.PI / 2, 0, 0] },
+  { key: 'bottom', pos: [0, -1, 0], rot: [Math.PI / 2, 0, 0] }
+];
+
+/* =========================================================================
+   2. 場景、相機、渲染器、軌道控制
+   ========================================================================= */
+const canvas = document.querySelector('#scene');
+
+/* 視窗尺寸一律經過這兩個函式取得。
+   頁面有可能在尺寸還是 0 的狀態下初始化（分頁在背景、還沒排版完、放在 iframe 裡），
+   那時 0 / 0 會讓 camera.aspect 變成 NaN，接著相機位置、縮放範圍全被污染而且救不回來。
+   夾到最小 1 就能擋掉整條 NaN 傳播鏈。 */
+const vw = () => Math.max(1, window.innerWidth);
+const vh = () => Math.max(1, window.innerHeight);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(vw(), vh());
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0a0a0a');
+
+const camera = new THREE.PerspectiveCamera(45, vw() / vh(), 0.1, 500);
+
+/**
+ * 算出「目標剛好塞進畫面」所需的相機距離。
+ * 直式視窗的水平視角比垂直視角窄，所以必須取水平／垂直兩者的較大值。
+ * 預設尺寸用立方體的面對角線（邊長 × √2），轉到角落時四個角才不會被裁掉。
+ */
+function fitDistance(size = CONFIG.CUBE_SIZE * Math.SQRT2, margin = CONFIG.CAM_MARGIN) {
+  const half = size / 2 * margin;
+  const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+  const byHeight = half / tanHalfFov;
+  const byWidth = half / (tanHalfFov * camera.aspect);
+  return Math.max(byHeight, byWidth);
+}
+
+camera.position.set(0, 0, fitDistance());
+scene.add(camera);
+
+/* 軌道控制：滑鼠拖曳自由旋轉、滾輪縮放、閒置時自動轉動。
+   推進到單一方塊時會整個停用，交由 GSAP 全權控制相機，兩者不會互搶。 */
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;      // 慣性，放開滑鼠後緩緩停下
+controls.dampingFactor = 0.075;
+controls.enablePan = false;         // 不開平移，避免把立方體拖出畫面外找不回來
+controls.rotateSpeed = 0.55;
+controls.zoomSpeed = 0.8;
+controls.autoRotateSpeed = CONFIG.SPIN_SPEED;
+// 上下只留一點點餘裕避開萬向鎖，範圍仍足以把頂面與底面完整轉到眼前
+controls.minPolarAngle = 0.04;
+controls.maxPolarAngle = Math.PI - 0.04;
+
+/* -------------------------------------------------------------------------
+   閒置自動轉動：使用者一開始操作就停掉，放手靜置一段時間後再恢復。
+   ------------------------------------------------------------------------- */
+let idle = true;
+let idleTimer = null;
+let zoomRatio = 1;   // 使用者的縮放倍率，相對於「剛好塞滿畫面」的距離
+
+function setIdle(on) {
+  idle = on && CONFIG.IDLE_MOTION !== 'none';
+  controls.autoRotate = idle && CONFIG.IDLE_MOTION === 'spin';
+}
+setIdle(true);
+
+controls.addEventListener('start', () => {
+  clearTimeout(idleTimer);
+  setIdle(false);
+});
+controls.addEventListener('end', () => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (!focused) setIdle(true); }, CONFIG.IDLE_RESUME_MS);
+  // 記住使用者目前的縮放倍率（相對於「剛好塞滿畫面」的距離）。
+  // 視窗尺寸改變時就用它重算距離，而不是把歷次比例乘起來——
+  // 那種做法只要中間有一次沒套用（例如當下正推進中）就會永久走鐘。
+  if (!focused) zoomRatio = camera.position.distanceTo(controls.target) / fitDistance();
+});
+
+/**
+ * sway 模式：用 sin 算出此刻「應該」停在哪個水平／垂直角度，
+ * 再讓相機每幀緩緩靠過去。因為是「趨近」而不是直接指定，
+ * 使用者手動轉開之後也會自然而然地被帶回來，而不是被硬拉。
+ */
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
+const swayOffset = new THREE.Vector3();
+const swayRight = new THREE.Vector3();
+
+function applySway(t) {
+  const wantYaw = Math.sin(t * CONFIG.SWAY_SPEED) * THREE.MathUtils.degToRad(CONFIG.SWAY_YAW);
+  const wantPitch = Math.PI / 2 +
+    Math.sin(t * CONFIG.SWAY_SPEED * 0.73) * THREE.MathUtils.degToRad(CONFIG.SWAY_PITCH);
+
+  const dYaw = (wantYaw - controls.getAzimuthalAngle()) * CONFIG.SWAY_EASE;
+  const dPitch = (wantPitch - controls.getPolarAngle()) * CONFIG.SWAY_EASE;
+
+  swayOffset.copy(camera.position).sub(controls.target);
+  swayRight.crossVectors(UP_AXIS, swayOffset).normalize();
+  swayOffset.applyAxisAngle(UP_AXIS, dYaw);
+  swayOffset.applyAxisAngle(swayRight, dPitch);
+  camera.position.copy(controls.target).add(swayOffset);
+}
+
+/* =========================================================================
+   3. 光影：環境光 + 帶陰影的平行光 + 兩盞補光
+   ------------------------------------------------------------------------
+   立方體六面朝向都不同，只有一盞燈會讓背光面全黑，
+   所以主光之外再補側面與背面各一盞弱光。
+   ========================================================================= */
+scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.45);
+keyLight.position.set(-26, 34, 32);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 160;
+// 陰影相機要蓋住整個立方體（含轉到角落時的對角線）
+const shadowSpan = CONFIG.CUBE_SIZE * 0.95;
+keyLight.shadow.camera.left = -shadowSpan;
+keyLight.shadow.camera.right = shadowSpan;
+keyLight.shadow.camera.top = shadowSpan;
+keyLight.shadow.camera.bottom = -shadowSpan;
+keyLight.shadow.bias = -0.0008;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+fillLight.position.set(30, -16, 14);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+rimLight.position.set(10, 16, -34);
+scene.add(rimLight);
+
+/* 立方體的實心內核：
+   方塊之間有縫隙，沒有這顆核心就會直接看穿到對面去。
+   它同時也是接收陰影的表面，讓每一格浮起來的方塊真的投下影子。 */
+const core = new THREE.Mesh(
+  new THREE.BoxGeometry(CONFIG.CUBE_SIZE - 0.06, CONFIG.CUBE_SIZE - 0.06, CONFIG.CUBE_SIZE - 0.06),
+  new THREE.MeshStandardMaterial({ color: 0x131313, roughness: 0.95, metalness: 0 })
+);
+core.receiveShadow = true;
+scene.add(core);
+
+/* =========================================================================
+   4. 貼圖池：48 張小圖，所有方塊共用
+   ------------------------------------------------------------------------
+   先用程序生成的紋理頂著（離線也看得到東西），接著在背景把 picsum 的
+   真實照片載進來，載好一張就換掉一張，畫面不會卡住。
+   ========================================================================= */
+const texturePool = [];
+
+/** 在小圖上蓋一層白，降低它的對比，免得乘上顏色後把整張大圖壓暗 */
+function washCanvas(ctx, size) {
+  ctx.save();
+  ctx.globalAlpha = CONFIG.TEXTURE_WASH;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+  ctx.restore();
+}
+
+/** 程序生成一張「像小照片」的紋理：漸層底 + 幾個色塊 + 一道光暈 */
+function makeProceduralTexture(seed) {
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // 用 seed 做一個簡單的偽隨機，讓每張都長得不一樣但可重現
+  let s = seed * 9301 + 49297;
+  const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+  const hue = Math.floor(rnd() * 360);
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, `hsl(${hue}, 55%, 62%)`);
+  g.addColorStop(1, `hsl(${(hue + 60) % 360}, 50%, 34%)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = `hsla(${Math.floor(rnd() * 360)}, 60%, ${30 + rnd() * 45}%, 0.5)`;
+    ctx.beginPath();
+    ctx.arc(rnd() * size, rnd() * size, 14 + rnd() * 34, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const glow = ctx.createLinearGradient(0, size, size, 0);
+  glow.addColorStop(0, 'rgba(255,255,255,0)');
+  glow.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  washCanvas(ctx, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// 先把池子塞滿程序貼圖，確保第一幀就有東西可用
+for (let i = 0; i < CONFIG.TEXTURE_POOL; i++) {
+  texturePool.push(makeProceduralTexture(i + 1));
+}
+
+/** 背景載入 picsum 小圖，載好一張就替換池中對應的那張 */
+function loadPhotoTextures() {
+  let loaded = 0;
+
+  for (let i = 0; i < CONFIG.TEXTURE_POOL; i++) {
+    const img = new Image();
+    // picsum 回應 Access-Control-Allow-Origin: *，所以畫進 canvas 不會被污染，
+    // 可以在上面做洗白處理
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      const size = 150;
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size);
+      washCanvas(ctx, size);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+
+      const old = texturePool[i];
+      texturePool[i] = tex;
+
+      // 因為方塊是依貼圖分批的，換貼圖只要換那一批的材質即可
+      for (const batch of batches) {
+        if (batch.userData.texIndex === i) {
+          batch.material.map = tex;
+          batch.material.needsUpdate = true;
+        }
+      }
+      old.dispose();
+
+      loaded++;
+      if (loaded === CONFIG.TEXTURE_POOL) setStatus(describeState() + ' · 小圖貼圖已全部載入');
+    };
+
+    img.onerror = () => {};   // 載入失敗（例如離線）：保留原本的程序貼圖
+    img.src = `https://picsum.photos/seed/mosaic${i + 1}/150/150`;
+  }
+}
+
+/* =========================================================================
+   5. 圖片解析：把任意照片壓成 GRID × GRID 的 RGB 網格
+   ========================================================================= */
+
+/**
+ * 立方體每一面都是正方形，所以先把來源照片置中裁成正方形再降取樣，
+ * 照片不會被拉變形，整個面也會被填滿不留空白。
+ */
+function sampleImage(source, grid) {
+  const sw = source.naturalWidth || source.width;
+  const sh = source.naturalHeight || source.height;
+
+  // 置中裁切成正方形
+  const side = Math.min(sw, sh);
+  const sx = (sw - side) / 2;
+  const sy = (sh - side) / 2;
+
+  // 分兩段縮小：先縮到中等尺寸再縮到網格，避免一次縮太多產生鋸齒
+  const midSize = Math.max(grid, Math.min(256, Math.round(side)));
+  const mid = document.createElement('canvas');
+  mid.width = mid.height = midSize;
+  const midCtx = mid.getContext('2d');
+  midCtx.imageSmoothingEnabled = true;
+  midCtx.imageSmoothingQuality = 'high';
+  midCtx.drawImage(source, sx, sy, side, side, 0, 0, midSize, midSize);
+
+  const small = document.createElement('canvas');
+  small.width = small.height = grid;
+  const ctx = small.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(mid, 0, 0, grid, grid);
+
+  // 關鍵：用 getImageData() 把每一格的 RGB 數值抓出來
+  const data = ctx.getImageData(0, 0, grid, grid).data;
+  const colors = [];
+  for (let i = 0; i < grid * grid; i++) {
+    colors.push({ r: data[i * 4], g: data[i * 4 + 1], b: data[i * 4 + 2] });
+  }
+  return colors;
+}
+
+/* =========================================================================
+   6. 建立 3D 馬賽克立方體
+   ------------------------------------------------------------------------
+   【效能關鍵】每個方塊若各自是一個 Mesh，6 × 30² = 5400 個方塊就是 5400 次
+   draw call，再加上陰影等於上萬次，實測只剩個位數 fps。
+   這裡改成依「用哪一張小圖」把方塊分成 48 批，每批一個 InstancedMesh：
+   整個立方體不論幾格都只畫 48 批，每格的顏色改用 per-instance 的
+   instanceColor 帶進去，視覺完全一樣但 draw call 少了兩個數量級。
+   ========================================================================= */
+let batches = [];               // 48 個 InstancedMesh（依貼圖分批）
+let tileData = [];              // 每一格的資料，波浪與推進都靠它
+let sharedGeometry = null;      // 所有方塊共用同一份 geometry
+
+const state = {
+  grid: CONFIG.GRID,
+  spacing: 1,
+  tileSize: 1,
+  faceMats: [],                 // 六個面的世界矩陣
+  faceQuats: [],                // 六個面的世界旋轉
+  sources: [],                  // 目前六個面使用的圖片來源（不足六張就循環取用）
+  photoCount: 0                 // 使用者實際上傳了幾張
+};
+
+/** 徹底清除上一個立方體，並釋放 GPU 資源 */
+function clearMosaic() {
+  focused = null;               // 舊的方塊即將被移除，不能再被相機鎖定
+
+  for (const batch of batches) {
+    scene.remove(batch);
+    batch.material.dispose();   // 貼圖是共用的，只丟材質不丟貼圖
+    batch.dispose();            // 釋放 instance 緩衝區
+  }
+  batches = [];
+  tileData = [];
+
+  if (sharedGeometry) {
+    sharedGeometry.dispose();
+    sharedGeometry = null;
+  }
+}
+
+/** 依 state.sources 把六個面全部建出來 */
+function buildMosaic() {
+  // 若此刻正停在某一格上，重建後應該回到「推進前」的視角，而不是把近景當成全景
+  const wasFocused = focused !== null;
+  clearMosaic();
+
+  const grid = CONFIG.GRID;
+  const spacing = CONFIG.CUBE_SIZE / grid;
+  const tileSize = spacing * CONFIG.TILE_RATIO;
+  const depth = spacing * CONFIG.TILE_DEPTH;
+  const amp = spacing * CONFIG.WAVE_AMPLITUDE;
+
+  state.grid = grid;
+  state.spacing = spacing;
+  state.tileSize = tileSize;
+
+  sharedGeometry = new THREE.BoxGeometry(tileSize, tileSize, depth);
+
+  const half = CONFIG.CUBE_SIZE / 2;
+  const first = -(grid - 1) * spacing / 2;   // 第一格的中心座標（面內本地座標）
+  // 方塊整體往外推半個厚度再加上波浪振幅，波浪往內擺時才不會陷進內核裡
+  const baseZ = depth / 2 + amp;
+
+  // 先算好六個面的世界矩陣與旋轉，之後每幀組合 instance 矩陣都會用到
+  state.faceMats = [];
+  state.faceQuats = [];
+  for (const face of FACES) {
+    const quat = new THREE.Quaternion()
+      .setFromEuler(new THREE.Euler(face.rot[0], face.rot[1], face.rot[2]));
+    const pos = new THREE.Vector3(face.pos[0] * half, face.pos[1] * half, face.pos[2] * half);
+    state.faceQuats.push(quat);
+    state.faceMats.push(new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(1, 1, 1)));
+  }
+
+  // 第一輪：決定每一格的顏色與要用哪一張小圖，先依貼圖分堆
+  const buckets = Array.from({ length: CONFIG.TEXTURE_POOL }, () => []);
+
+  FACES.forEach((face, fi) => {
+    const source = state.sources[fi % state.sources.length];
+    const colors = sampleImage(source, grid);
+
+    for (let y = 0; y < grid; y++) {
+      for (let x = 0; x < grid; x++) {
+        const c = colors[y * grid + x];
+        const texIndex = Math.floor(Math.random() * CONFIG.TEXTURE_POOL);
+
+        const d = {
+          face: fi,
+          lx: first + x * spacing,       // 面內本地座標
+          ly: -first - y * spacing,
+          baseZ,
+          phase: (x + y) * 0.35,         // 斜向波浪的相位差
+          // 顏色直接取自照片中對應網格點的 RGB
+          color: new THREE.Color().setStyle(`rgb(${c.r}, ${c.g}, ${c.b})`),
+          spin: 0,                       // 翻轉角度
+          flipping: false,
+          isFocused: false,
+          batch: null,
+          id: 0
+        };
+
+        buckets[texIndex].push(d);
+        tileData.push(d);
+      }
+    }
+  });
+
+  // 第二輪：每一堆做成一個 InstancedMesh
+  buckets.forEach((bucket, texIndex) => {
+    if (bucket.length === 0) return;
+
+    const material = new THREE.MeshStandardMaterial({
+      // 這裡的 color 保持白色，真正的顏色走 per-instance 的 instanceColor，
+      // 貼圖則與它相乘混色：遠看是整張大圖，近看每一格都是一張獨立的小照片
+      map: texturePool[texIndex],
+      roughness: 0.55,
+      metalness: 0.05
+    });
+
+    const mesh = new THREE.InstancedMesh(sharedGeometry, material, bucket.length);
+    mesh.castShadow = true;        // 投影到內核上
+    mesh.receiveShadow = false;    // 同一面的方塊幾乎共面，接收陰影只會產生雜訊
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);   // 每幀都會更新
+    mesh.frustumCulled = false;    // 一批橫跨六個面，交給 three 自動剔除反而會誤判
+    mesh.userData.texIndex = texIndex;
+
+    bucket.forEach((d, i) => {
+      d.batch = mesh;
+      d.id = i;
+      mesh.setColorAt(i, d.color);
+    });
+    mesh.instanceColor.needsUpdate = true;
+
+    scene.add(mesh);
+    batches.push(mesh);
+  });
+
+  updateInstanceMatrices(0);     // 先擺好初始位置，第一幀就不會是空的
+
+  // 縮放範圍：最近可以貼到單一方塊前，最遠不超過全景距離的 2.5 倍
+  controls.minDistance = tileSize * 0.9;
+  controls.maxDistance = fitDistance() * 2.5;
+
+  // 重建之後回到全景（保留使用者目前轉到的角度）
+  if (!wasFocused) {
+    home.pos.copy(camera.position);
+    home.target.copy(controls.target);
+  }
+  resetCamera(0.9);
+  setStatus(describeState());
+}
+
+/** 面板上的狀態文字 */
+function describeState() {
+  const perFace = state.grid * state.grid;
+  const photos = state.photoCount > 0 ? `${state.photoCount} 張照片` : '預設漸層';
+  return `${photos} · 六面各 ${state.grid} × ${state.grid}，共 ${perFace * 6} 格`;
+}
+
+/* =========================================================================
+   7. 預設內容：六張色相不同的程序漸層（零外部依賴，開啟即有東西看）
+   ========================================================================= */
+function makeDefaultImage(hueShift) {
+  const size = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // 斜向彩虹漸層，每一面從不同色相起跳
+  const g = ctx.createLinearGradient(0, size, size, 0);
+  for (let i = 0; i <= 12; i++) {
+    g.addColorStop(i / 12, `hsl(${(i * 30 + hueShift) % 360}, 82%, 58%)`);
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+
+  // 中央白色光暈
+  const glow = ctx.createRadialGradient(size * 0.42, size * 0.38, 10, size * 0.42, size * 0.38, size * 0.6);
+  glow.addColorStop(0, 'rgba(255,255,255,0.85)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  // 四角壓暗的暗角
+  const vig = ctx.createRadialGradient(size / 2, size / 2, size * 0.25, size / 2, size / 2, size * 0.78);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, size, size);
+
+  return c;
+}
+
+/* =========================================================================
+   8. 每幀更新所有方塊的位置（波浪 + 翻轉）
+   ------------------------------------------------------------------------
+   instance 的矩陣是世界座標，所以用「該面的世界矩陣 × 面內本地矩陣」組出來。
+   ========================================================================= */
+const _pos = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _scale = new THREE.Vector3(1, 1, 1);
+const _mat = new THREE.Matrix4();
+const _axisY = new THREE.Vector3(0, 1, 0);
+
+function updateInstanceMatrices(t) {
+  const amp = state.spacing * CONFIG.WAVE_AMPLITUDE;
+
+  for (const d of tileData) {
+    let z = d.baseZ;
+    let rot = d.spin;
+
+    // 正在翻轉或被相機鎖定的方塊不參與波浪
+    if (!d.flipping && !d.isFocused) {
+      const w = Math.sin(t * CONFIG.WAVE_SPEED + d.phase);
+      z += w * amp;
+      rot = w * 0.06;
+    }
+
+    _pos.set(d.lx, d.ly, z);
+    _quat.setFromAxisAngle(_axisY, rot);
+    _mat.compose(_pos, _quat, _scale);
+    _mat.premultiply(state.faceMats[d.face]);
+    d.batch.setMatrixAt(d.id, _mat);
+  }
+
+  for (const batch of batches) batch.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================================
+   9. 點擊推進／退回
+   ========================================================================= */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let focused = null;             // 目前被推進的那一格（tileData 裡的物件）
+let cameraLocked = false;       // true 時相機由 GSAP 全權控制，OrbitControls 不插手
+
+// 推進之前先記住使用者當下轉到的視角，退回時回到那裡
+const home = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+home.pos.set(0, 0, fitDistance());
+
+const _worldPos = new THREE.Vector3();
+const _normal = new THREE.Vector3();
+const _faceUp = new THREE.Vector3();
+
+/** 相機飛回 home 記錄的視角，並把旋轉控制權交還給使用者 */
+function resetCamera(duration = 1.25) {
+  if (focused) {
+    focused.isFocused = false;
+    focused = null;
+  }
+  cameraLocked = true;
+
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+  gsap.killTweensOf(camera.up);
+
+  gsap.to(camera.position, {
+    x: home.pos.x, y: home.pos.y, z: home.pos.z,
+    duration, ease: 'power3.inOut'
+  });
+
+  // 看頂面／底面時相機的上方向被換過，退回全景要轉回正常的 +Y
+  gsap.to(camera.up, { x: 0, y: 1, z: 0, duration, ease: 'power3.inOut' });
+
+  gsap.to(controls.target, {
+    x: home.target.x, y: home.target.y, z: home.target.z,
+    duration, ease: 'power3.inOut',
+    onComplete: () => {
+      camera.up.set(0, 1, 0);
+      controls.enabled = true;    // 交還旋轉控制權
+      cameraLocked = false;
+      setIdle(true);
+    }
+  });
+
+  hint.style.opacity = '1';
+  backBtn.classList.remove('on');
+}
+
+/** 相機衝到指定方塊的正前方，同時讓該方塊翻轉一圈 */
+function focusTile(d) {
+  if (focused) {
+    focused.isFocused = false;    // 在推進狀態下又點了別格
+  } else {
+    // 第一次從全景推進：記住現在的視角，退回時才找得回來
+    home.pos.copy(camera.position);
+    home.target.copy(controls.target);
+  }
+
+  focused = d;
+  d.isFocused = true;
+
+  // 推進期間停用軌道控制與自動轉動，相機完全交給 GSAP
+  controls.enabled = false;
+  cameraLocked = true;
+  clearTimeout(idleTimer);
+  setIdle(false);
+
+  // 這一格屬於哪一面，就沿著那一面的法線飛過去
+  const quat = state.faceQuats[d.face];
+  _normal.set(0, 0, 1).applyQuaternion(quat);
+  // 頂面／底面是俯視與仰視，用預設的 +Y 當上方向會算不出朝向，
+  // 所以改用該面自己的「上」當相機的上方向
+  _faceUp.set(0, 1, 0).applyQuaternion(quat);
+  _worldPos.set(d.lx, d.ly, d.baseZ).applyMatrix4(state.faceMats[d.face]);
+
+  // 用同一套算式求「這個方塊剛好填滿畫面」的距離，橫式／直式視窗都一致
+  const dist = fitDistance(state.tileSize, CONFIG.FOCUS_MARGIN);
+
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+  gsap.killTweensOf(camera.up);
+  gsap.killTweensOf(d);
+
+  gsap.to(camera.position, {
+    x: _worldPos.x + _normal.x * dist,
+    y: _worldPos.y + _normal.y * dist,
+    z: _worldPos.z + _normal.z * dist,
+    duration: 1.35, ease: 'power3.inOut'
+  });
+
+  gsap.to(camera.up, {
+    x: _faceUp.x, y: _faceUp.y, z: _faceUp.z,
+    duration: 1.35, ease: 'power3.inOut'
+  });
+
+  gsap.to(controls.target, {
+    x: _worldPos.x, y: _worldPos.y, z: _worldPos.z,
+    duration: 1.35, ease: 'power3.inOut'
+  });
+
+  // 方塊自己轉滿 360 度（本地 Y 軸 = 該面的上下軸）
+  d.flipping = true;
+  d.spin = 0;
+  gsap.to(d, {
+    spin: Math.PI * 2,
+    duration: 1.35,
+    ease: 'back.out(1.4)',
+    onComplete: () => {
+      d.spin = 0;
+      d.flipping = false;
+    }
+  });
+
+  hint.style.opacity = '0.35';
+  backBtn.classList.add('on');
+}
+
+/* 有了拖曳旋轉之後，必須把「拖曳」和「點擊」分開：
+   按下與放開之間若移動超過幾個像素，就當成是在轉動立方體，不觸發推進。 */
+let pressAt = null;
+
+canvas.addEventListener('pointerdown', (e) => {
+  pressAt = { x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  if (!pressAt) return;
+  const moved = Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y);
+  pressAt = null;
+  if (moved > 5) return;          // 這是拖曳旋轉，不是點擊
+
+  pointer.x = (e.clientX / vw()) * 2 - 1;
+  pointer.y = -(e.clientY / vh()) * 2 + 1;
+
+  camera.updateMatrixWorld();
+  raycaster.setFromCamera(pointer, camera);
+  // InstancedMesh 的 raycast 會回報 instanceId，再反查是哪一格
+  const hits = raycaster.intersectObjects(batches, false);
+
+  if (hits.length > 0 && hits[0].instanceId !== undefined) {
+    const hit = hits[0];
+    const d = tileData.find(td => td.batch === hit.object && td.id === hit.instanceId);
+    if (d) focusTile(d);
+  } else if (focused) {
+    resetCamera();                // 推進狀態下點到黑色背景 → 退回
+  }
+  // 全景狀態下點背景則不做事，免得把使用者自己轉好的角度硬拉回去
+});
+
+/* =========================================================================
+   10. 動畫迴圈
+   ========================================================================= */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  updateInstanceMatrices(t);
+
+  if (cameraLocked) {
+    // 推進／退回飛行中：相機位置由 GSAP 指定，這裡只負責朝向目標
+    camera.lookAt(controls.target);
+  } else {
+    if (idle && CONFIG.IDLE_MOTION === 'sway') applySway(t);
+    controls.update();   // 慣性、自轉、以及讓相機持續朝向 target
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* =========================================================================
+   11. UI 事件：上傳、解析度滑桿、拖放、視窗縮放
+   ========================================================================= */
+const statusEl = document.querySelector('#status');
+const hint = document.querySelector('#hint');
+const gridInput = document.querySelector('#grid');
+const gridVal = document.querySelector('#gridVal');
+const fileInput = document.querySelector('#file');
+const dropzone = document.querySelector('#dropzone');
+const backBtn = document.querySelector('#back');
+
+function setStatus(text) { statusEl.textContent = text; }
+
+// 退回全景：按鈕與 Esc 鍵（點擊黑色背景一樣有效，在 canvas 的 pointerup 裡處理）
+backBtn.addEventListener('click', () => resetCamera());
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && focused) resetCamera();
+});
+
+/** 讀取使用者選的檔案：最多取前六張，依序貼到六個面 */
+function loadFiles(fileList) {
+  const picked = Array.from(fileList || [])
+    .filter(f => f.type.startsWith('image/'))
+    .slice(0, CONFIG.MAX_PHOTOS);
+
+  if (picked.length === 0) {
+    setStatus('請選擇圖片檔');
+    return;
+  }
+
+  setStatus(`讀取 ${picked.length} 張照片中…`);
+
+  // 每個檔案各自 FileReader → Image，全部就緒後一次重建
+  const jobs = picked.map(file => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);   // 單張解不開就跳過，不要卡住其他張
+      img.src = reader.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  }));
+
+  Promise.all(jobs).then(images => {
+    const ok = images.filter(Boolean);
+    if (ok.length === 0) {
+      setStatus('這些圖片都無法解碼');
+      return;
+    }
+    state.sources = ok;          // 不足六張時 buildMosaic 會循環取用
+    state.photoCount = ok.length;
+    buildMosaic();
+  });
+}
+
+fileInput.addEventListener('change', (e) => {
+  loadFiles(e.target.files);
+  e.target.value = '';   // 清空，讓同一批檔案可以重複選
+});
+
+// 解析度滑桿：放開後才重建，避免拖曳過程中瘋狂重算
+gridInput.addEventListener('input', () => {
+  gridVal.textContent = `${gridInput.value} × ${gridInput.value}`;
+});
+gridInput.addEventListener('change', () => {
+  CONFIG.GRID = parseInt(gridInput.value, 10);
+  buildMosaic();
+});
+
+// 整頁拖放上傳
+window.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('on'); });
+window.addEventListener('dragleave', (e) => { if (e.target === document.documentElement) dropzone.classList.remove('on'); });
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('on');
+  loadFiles(e.dataTransfer.files);
+});
+
+/** 把 pos 沿著「target → pos」的方向重新擺到指定距離（方向不變，只改遠近） */
+const _reDist = new THREE.Vector3();
+function setDistanceFrom(pos, target, dist) {
+  _reDist.copy(pos).sub(target);
+  if (_reDist.lengthSq() < 1e-8) _reDist.set(0, 0, 1);   // 重疊時給一個預設方向
+  pos.copy(target).add(_reDist.setLength(dist));
+}
+
+/** 視窗尺寸有變（或第一次確定下來）時，重新設定渲染尺寸與取景距離 */
+function applyViewportSize() {
+  camera.aspect = vw() / vh();
+  camera.updateProjectionMatrix();
+  renderer.setSize(vw(), vh());
+
+  // 長寬比變了，「剛好塞滿畫面」的距離也跟著變。
+  // 直接用目前視窗重算距離（fit × 使用者的縮放倍率），
+  // 使用者轉到的角度與縮放比例都保留，也不會累積誤差。
+  const fit = fitDistance();
+  controls.maxDistance = fit * 2.5;
+  const want = fit * zoomRatio;
+
+  setDistanceFrom(home.pos, home.target, want);
+
+  if (!focused) {
+    setDistanceFrom(camera.position, controls.target, want);
+    controls.update();
+  }
+}
+
+window.addEventListener('resize', applyViewportSize);
+
+/* =========================================================================
+   12. 啟動
+   ========================================================================= */
+// 六個面各給一張色相不同的預設漸層
+state.sources = [0, 60, 120, 180, 240, 300].map(makeDefaultImage);
+buildMosaic();
+
+/* 只靠 window 的 resize 事件是不夠的：
+   如果腳本執行當下的視窗尺寸和最終排版不同（分頁在背景、嵌在 iframe、
+   預覽窗還在調整），而之後又剛好沒有 resize 事件，取景就會一直是錯的。
+   ResizeObserver 在開始觀察時就會先觸發一次，等於排版確定後再校正一遍。 */
+new ResizeObserver(applyViewportSize).observe(document.documentElement);
+loadPhotoTextures();   // 背景把 picsum 小圖換進貼圖池
+animate();
+</script>
+</body>
+</html>

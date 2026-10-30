@@ -6,13 +6,13 @@
 <title>3D 照片馬賽克立方體</title>
 
 <style>
-  /* ===== 全域：深黑底 + 無捲軸 ===== */
+  /* ===== 全域：淺色底 + 無捲軸 ===== */
   :root {
-    --bg: #0a0a0a;
-    --panel: rgba(255, 255, 255, 0.06);
-    --panel-border: rgba(255, 255, 255, 0.12);
-    --text: rgba(255, 255, 255, 0.92);
-    --text-dim: rgba(255, 255, 255, 0.45);
+    --bg: #edebe6;                              /* 帶一點暖調的淺灰，比純白耐看 */
+    --panel: rgba(255, 255, 255, 0.62);
+    --panel-border: rgba(0, 0, 0, 0.1);
+    --text: rgba(0, 0, 0, 0.86);
+    --text-dim: rgba(0, 0, 0, 0.48);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,7 +49,7 @@
     border: 1px solid var(--panel-border);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
   }
 
   #panel h1 {
@@ -62,7 +62,12 @@
   }
 
   /* 真正的 file input 藏起來，用 label 當作優雅的按鈕 */
-  #file { display: none; }
+  #file, #dir { display: none; }
+
+  .btn-second { margin-top: 8px; font-size: 13px; padding: 9px 14px; }
+  .btn-clear  { margin-top: 8px; font-size: 12.5px; padding: 8px 14px;
+                background: none; border-color: rgba(0, 0, 0, 0.1); color: var(--text-dim); }
+  .btn-clear:hover { background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.2); color: var(--text); }
 
   .btn {
     display: block;
@@ -73,12 +78,12 @@
     letter-spacing: 0.05em;
     color: var(--text);
     border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    background: rgba(255, 255, 255, 0.55);
     cursor: pointer;
     transition: background 0.22s ease, border-color 0.22s ease, transform 0.12s ease;
   }
-  .btn:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.4); }
+  .btn:hover { background: rgba(255, 255, 255, 0.95); border-color: rgba(0, 0, 0, 0.32); }
   .btn:active { transform: scale(0.975); }
 
   .sub {
@@ -108,7 +113,7 @@
     width: 100%;
     height: 3px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.16);
     outline: none;
     cursor: pointer;
   }
@@ -118,13 +123,15 @@
     width: 13px;
     height: 13px;
     border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    background: #22201c;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
   input[type="range"]::-moz-range-thumb {
     width: 13px; height: 13px; border: none; border-radius: 50%;
-    background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    background: #22201c; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
+
+  #status.ok { color: #1d6b43; font-weight: 600; }   /* 上傳完成時的綠字 */
 
   #status {
     margin-top: 16px;
@@ -144,11 +151,11 @@
     font-size: 12.5px;
     line-height: 1.8;
     letter-spacing: 0.06em;
-    color: rgba(255, 255, 255, 0.38);
+    color: rgba(0, 0, 0, 0.42);
     pointer-events: none;
     transition: opacity 0.5s ease;
   }
-  #hint b { color: rgba(255, 255, 255, 0.72); font-weight: 500; }
+  #hint b { color: rgba(0, 0, 0, 0.75); font-weight: 600; }
 
   /* ===== 退回全景按鈕：只在推進時出現 ===== */
   #back {
@@ -162,8 +169,8 @@
     letter-spacing: 0.08em;
     color: var(--text);
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(10, 10, 10, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     cursor: pointer;
@@ -172,15 +179,15 @@
     transition: opacity 0.35s ease, transform 0.35s ease, background 0.2s ease;
   }
   #back.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
-  #back:hover { background: rgba(255, 255, 255, 0.16); }
+  #back:hover { background: rgba(255, 255, 255, 0.98); }
 
   /* 拖放整頁上傳時的高亮外框 */
   #dropzone {
     position: fixed;
     inset: 0;
     z-index: 20;
-    border: 2px dashed rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.04);
+    border: 2px dashed rgba(0, 0, 0, 0.42);
+    background: rgba(255, 255, 255, 0.5);
     display: none;
     align-items: center;
     justify-content: center;
@@ -202,7 +209,12 @@
 
     <input type="file" id="file" accept="image/*" multiple>
     <label class="btn" for="file">上傳照片</label>
-    <div class="sub">可一次選多張，依序貼到六個面</div>
+
+    <input type="file" id="dir" accept="image/*" multiple webkitdirectory>
+    <label class="btn btn-second" for="dir">上傳整個資料夾</label>
+    <button id="clear" class="btn btn-clear">清除照片</button>
+
+    <div class="sub">可分多次上傳累加，重複的照片會自動排除</div>
 
     <div class="field">
       <div class="field-label"><span>每面解析度</span><b id="gridVal">26 × 26</b></div>
@@ -216,14 +228,14 @@
   <div id="hint">
     拖曳 <b>旋轉</b> · 滾輪 <b>縮放</b><br>
     點擊任一方塊 <b>推進放大</b><br>
-    點擊黑色背景或按 <b>Esc</b> 退回全景
+    點擊背景或按 <b>Esc</b> 退回全景
   </div>
 
   <!-- 推進後才出現的退回鈕 -->
   <button id="back">← 退回全景</button>
 
   <!-- 拖放提示 -->
-  <div id="dropzone">放開以載入這些照片</div>
+  <div id="dropzone">放開以載入照片或整個資料夾</div>
 
   <!-- Three.js 與 GSAP 採 ESM + import map 從 CDN 載入 -->
   <script type="importmap">
@@ -249,10 +261,19 @@ const CONFIG = {
   CUBE_SIZE: 30,       // 立方體的邊長；與 GRID 無關，所以不論格數多少相機都不用重算
   TILE_RATIO: 0.88,    // 方塊佔一格的比例，剩下的 0.12 就是方塊之間的間距
   TILE_DEPTH: 0.5,     // 方塊厚度（相對於一格的寬度）
-  TEXTURE_POOL: 48,    // 小圖貼圖池的張數。這同時也是繪製批次數：
-                       // 所有方塊依貼圖分成 48 個 InstancedMesh，整個立方體只畫 48 批
-  TEXTURE_WASH: 0.42,  // 小圖洗白程度（0～1）。map 會與顏色相乘，
-                       // 小圖太暗會把大圖壓死；洗白一點才能遠看清楚、近看仍有細節
+  ATLAS_COUNT: 16,     // 圖集張數。小照片不是一張一個貼圖，而是拼進幾張大圖集，
+                       // 方塊只要依「用哪一張圖集」分批，整個立方體就只畫 16 批
+  ATLAS_SIDE: 8,       // 每張圖集切成 8 × 8 格 → 一張裝 64 張小照片
+  ATLAS_CELL: 128,     // 圖集中每一格的像素邊長（圖集本身 8 × 128 = 1024 px）
+                       // 以上三者相乘 = 最多 1024 張不重複的小照片
+  DEFAULT_PHOTOS: 256, // 還沒上傳照片時，向 picsum 抓幾張當預設內容。
+                       // 開場就打 1024 個請求太重，抓 256 張再複製填滿其餘格子
+  TEXTURE_WASH: 0.45,  // 小圖洗白程度（0～1）。貼圖會與該格顏色相乘，
+                       // 小圖太濃會把大圖壓死；洗白一點遠看才清楚。
+                       // 這一步改在 shader 裡逐格計算，所以推進時能單獨還原某一格
+  REVEAL_TIME: 1.1,    // 推進時「還原成原始照片」的過場秒數
+  CLOSEUP_SIZE: 720,   // 推進完成後另外抓的高解析版本邊長。
+                       // 圖集那張只有 ATLAS_CELL 像素，放大到滿版會糊
   CAM_MARGIN: 1.1,     // 全景時立方體四周的留白倍率
   FOCUS_MARGIN: 1.15,  // 推進後方塊四周的留白倍率（1 = 剛好貼齊畫面邊緣）
   WAVE_AMPLITUDE: 0.3, // 微幅波浪的起伏幅度（沿著該面的法線方向，以一格寬度為單位）
@@ -305,7 +326,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#0a0a0a');
+scene.background = new THREE.Color('#edebe6');   // 與頁面底色一致
 
 const camera = new THREE.PerspectiveCamera(45, vw() / vh(), 0.1, 500);
 
@@ -425,111 +446,233 @@ scene.add(rimLight);
    它同時也是接收陰影的表面，讓每一格浮起來的方塊真的投下影子。 */
 const core = new THREE.Mesh(
   new THREE.BoxGeometry(CONFIG.CUBE_SIZE - 0.06, CONFIG.CUBE_SIZE - 0.06, CONFIG.CUBE_SIZE - 0.06),
-  new THREE.MeshStandardMaterial({ color: 0x131313, roughness: 0.95, metalness: 0 })
+  new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.95, metalness: 0 })
 );
 core.receiveShadow = true;
 scene.add(core);
 
 /* =========================================================================
-   4. 貼圖池：48 張小圖，所有方塊共用
+   4. 小圖圖集：256 張不重複的小照片，拼成 4 張 1024px 圖集
    ------------------------------------------------------------------------
-   先用程序生成的紋理頂著（離線也看得到東西），接著在背景把 picsum 的
-   真實照片載進來，載好一張就換掉一張，畫面不會卡住。
+   若每張小圖各自是一個貼圖，方塊就得依貼圖分成 256 批來畫；
+   拼成圖集後只剩 4 批，每一格再用 per-instance 的 UV 位移取自己那一小塊。
+   先用程序生成的圖樣填滿（離線也看得到東西），再從 picsum 逐張換成真實照片。
    ========================================================================= */
-const texturePool = [];
+const ATLAS_CELLS = CONFIG.ATLAS_SIDE * CONFIG.ATLAS_SIDE;    // 每張圖集幾格
+const PHOTO_COUNT = CONFIG.ATLAS_COUNT * ATLAS_CELLS;         // 小照片總數
+const atlases = [];
 
-/** 在小圖上蓋一層白，降低它的對比，免得乘上顏色後把整張大圖壓暗 */
-function washCanvas(ctx, size) {
-  ctx.save();
-  ctx.globalAlpha = CONFIG.TEXTURE_WASH;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, size, size);
-  ctx.restore();
+/* 填圖集的工作可能同時有好幾批（開場的 picsum、使用者上傳的）。
+   每批開始前把這個號碼加一，舊的那批一看號碼不對就自己停掉，
+   否則慢吞吞的 picsum 會把使用者剛填好的照片蓋掉。 */
+let atlasToken = 0;
+
+/** 第 i 張小照片位在哪一張圖集的哪一格 */
+function photoSlot(i) {
+  const cell = i % ATLAS_CELLS;
+  return {
+    atlas: Math.floor(i / ATLAS_CELLS),
+    col: cell % CONFIG.ATLAS_SIDE,
+    row: Math.floor(cell / CONFIG.ATLAS_SIDE)
+  };
 }
 
-/** 程序生成一張「像小照片」的紋理：漸層底 + 幾個色塊 + 一道光暈 */
-function makeProceduralTexture(seed) {
-  const size = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const ctx = c.getContext('2d');
+/**
+ * 第 i 格在圖集裡的 UV 位移。
+ * CanvasTexture 預設 flipY = true（上傳時整張上下翻轉），
+ * 所以 canvas 由上往下數的第 row 列，對應到的 v 要從 1 往下扣。
+ */
+function photoUvOffset(i) {
+  const { col, row } = photoSlot(i);
+  const n = CONFIG.ATLAS_SIDE;
+  return [col / n, 1 - (row + 1) / n];
+}
 
+/** 直接在圖集的某一格上程序生成一張「像小照片」的圖樣 */
+function drawProceduralCell(ctx, x, y, size, seed) {
   // 用 seed 做一個簡單的偽隨機，讓每張都長得不一樣但可重現
   let s = seed * 9301 + 49297;
   const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, size, size);
+  ctx.clip();
+
   const hue = Math.floor(rnd() * 360);
-  const g = ctx.createLinearGradient(0, 0, size, size);
+  const g = ctx.createLinearGradient(x, y, x + size, y + size);
   g.addColorStop(0, `hsl(${hue}, 55%, 62%)`);
   g.addColorStop(1, `hsl(${(hue + 60) % 360}, 50%, 34%)`);
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(x, y, size, size);
 
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = `hsla(${Math.floor(rnd() * 360)}, 60%, ${30 + rnd() * 45}%, 0.5)`;
     ctx.beginPath();
-    ctx.arc(rnd() * size, rnd() * size, 14 + rnd() * 34, 0, Math.PI * 2);
+    ctx.arc(x + rnd() * size, y + rnd() * size, 14 + rnd() * 34, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  const glow = ctx.createLinearGradient(0, size, size, 0);
+  const glow = ctx.createLinearGradient(x, y + size, x + size, y);
   glow.addColorStop(0, 'rgba(255,255,255,0)');
   glow.addColorStop(0.5, 'rgba(255,255,255,0.22)');
   glow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(x, y, size, size);
 
-  washCanvas(ctx, size);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  ctx.restore();
 }
 
-// 先把池子塞滿程序貼圖，確保第一幀就有東西可用
-for (let i = 0; i < CONFIG.TEXTURE_POOL; i++) {
-  texturePool.push(makeProceduralTexture(i + 1));
+/**
+ * 把第 from 格的畫面複製到第 to 格。
+ * 照片數少於格數時，剩下的格子就靠複製來填滿——
+ * 這比重新解碼一次原始檔案便宜好幾個數量級，
+ * 所以後續再上傳幾張照片時，只要解碼「新的那幾張」就好。
+ */
+function copyCell(from, to) {
+  const s = CONFIG.ATLAS_CELL;
+  const a = photoSlot(from);
+  const b = photoSlot(to);
+  atlases[b.atlas].ctx.drawImage(
+    atlases[a.atlas].canvas,
+    a.col * s, a.row * s, s, s,
+    b.col * s, b.row * s, s, s
+  );
+  atlases[b.atlas].texture.needsUpdate = true;
 }
 
-/** 背景載入 picsum 小圖，載好一張就替換池中對應的那張 */
+/** 前 n 格已經是正確內容，用它們循環複製填滿剩下的格子 */
+function padCells(n) {
+  if (n <= 0) return;
+  for (let i = n; i < PHOTO_COUNT; i++) copyCell(i % n, i);
+}
+
+// 建立圖集並先用程序圖樣填滿，確保第一幀就有東西可用
+(function createAtlases() {
+  const side = CONFIG.ATLAS_SIDE * CONFIG.ATLAS_CELL;
+  for (let a = 0; a < CONFIG.ATLAS_COUNT; a++) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = side;
+    const ctx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    atlases.push({ canvas, ctx, texture });
+  }
+  drawProceduralCells();
+})();
+
+/** 畫出 DEFAULT_PHOTOS 格程序圖樣，再複製填滿其餘格子 */
+function drawProceduralCells() {
+  const s = CONFIG.ATLAS_CELL;
+  for (let i = 0; i < CONFIG.DEFAULT_PHOTOS; i++) {
+    const { atlas, col, row } = photoSlot(i);
+    drawProceduralCell(atlases[atlas].ctx, col * s, row * s, s, i + 1);
+  }
+  for (const a of atlases) a.texture.needsUpdate = true;
+  padCells(CONFIG.DEFAULT_PHOTOS);
+}
+
+/**
+ * 背景把 picsum 的真實照片逐張畫進圖集。
+ * 同時只開 8 條，避免 256 個請求一次打出去被限流；
+ * 單張失敗（例如離線）就保留該格原本的程序圖樣。
+ */
 function loadPhotoTextures() {
+  const CONCURRENCY = 8;
+  const s = CONFIG.ATLAS_CELL;
+  const token = atlasToken;
   let loaded = 0;
+  let next = 0;
 
-  for (let i = 0; i < CONFIG.TEXTURE_POOL; i++) {
+  const total = CONFIG.DEFAULT_PHOTOS;
+
+  function startNext() {
+    if (next >= total || token !== atlasToken) return;   // 使用者上傳了，這批作廢
+    const i = next++;
+
     const img = new Image();
-    // picsum 回應 Access-Control-Allow-Origin: *，所以畫進 canvas 不會被污染，
-    // 可以在上面做洗白處理
+    // picsum 回應 Access-Control-Allow-Origin: *，所以畫進 canvas 不會被污染
     img.crossOrigin = 'anonymous';
 
-    img.onload = () => {
-      const size = 150;
-      const c = document.createElement('canvas');
-      c.width = c.height = size;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, size, size);
-      washCanvas(ctx, size);
-
-      const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
-
-      const old = texturePool[i];
-      texturePool[i] = tex;
-
-      // 因為方塊是依貼圖分批的，換貼圖只要換那一批的材質即可
-      for (const batch of batches) {
-        if (batch.userData.texIndex === i) {
-          batch.material.map = tex;
-          batch.material.needsUpdate = true;
-        }
+    const done = (ok) => {
+      if (token !== atlasToken) return;
+      if (ok) {
+        const { atlas, col, row } = photoSlot(i);
+        atlases[atlas].ctx.drawImage(img, col * s, row * s, s, s);
+        atlases[atlas].texture.needsUpdate = true;
       }
-      old.dispose();
-
       loaded++;
-      if (loaded === CONFIG.TEXTURE_POOL) setStatus(describeState() + ' · 小圖貼圖已全部載入');
+      if (loaded === total) {
+        padCells(total);           // 用抓到的 256 張填滿其餘格子
+        setStatus(`${describeState()} · ${total} 張小圖已載入`);
+      } else if (loaded % 32 === 0) {
+        padCells(total);           // 邊載邊複製，後面的格子才會跟著更新
+        setStatus(`${describeState()} · 小圖載入 ${loaded} / ${total}`);
+      }
+      startNext();
     };
 
-    img.onerror = () => {};   // 載入失敗（例如離線）：保留原本的程序貼圖
-    img.src = `https://picsum.photos/seed/mosaic${i + 1}/150/150`;
+    img.onload = () => done(true);
+    img.onerror = () => done(false);
+    img.src = `https://picsum.photos/seed/mosaic${i + 1}/${s}/${s}`;
   }
+
+  for (let k = 0; k < CONCURRENCY; k++) startNext();
+}
+
+/**
+ * 方塊的材質。
+ * 洗白與染色本來是烘進貼圖和 instanceColor 的，現在改到 shader 裡逐格計算，
+ * 由 per-instance 的 aReveal 控制：
+ *   aReveal = 0 → 照常洗白並乘上該格顏色，負責遠看的大圖
+ *   aReveal = 1 → 不洗白也不染色，露出這張小照片原本的樣子
+ */
+function makeTileMaterial(atlas) {
+  const material = new THREE.MeshStandardMaterial({
+    map: atlas.texture,
+    roughness: 0.55,
+    metalness: 0.05
+  });
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uWash = { value: CONFIG.TEXTURE_WASH };
+    shader.uniforms.uAtlasScale = { value: 1 / CONFIG.ATLAS_SIDE };
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>',
+        '#include <common>\n' +
+        'attribute vec2 aAtlasOffset;\n' +
+        'attribute float aReveal;\n' +
+        'varying vec2 vAtlasOffset;\n' +
+        'varying float vReveal;')
+      .replace('#include <uv_vertex>',
+        '#include <uv_vertex>\n' +
+        'vAtlasOffset = aAtlasOffset;\n' +
+        'vReveal = aReveal;');
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\n' +
+        'uniform float uWash;\n' +
+        'uniform float uAtlasScale;\n' +
+        'varying vec2 vAtlasOffset;\n' +
+        'varying float vReveal;')
+      // 只取圖集中屬於這一格的那一小塊，並在這裡做洗白
+      .replace('#include <map_fragment>',
+        'vec2 atlasUv = vAtlasOffset + clamp( vMapUv, 0.0, 1.0 ) * uAtlasScale;\n' +
+        'vec4 photo = texture2D( map, atlasUv );\n' +
+        'photo.rgb = mix( photo.rgb, vec3( 1.0 ), uWash * ( 1.0 - vReveal ) );\n' +
+        'diffuseColor *= photo;')
+      // 這一格的 RGB 顏色，推進時淡成白色等於不染色
+      .replace('#include <color_fragment>',
+        '#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\n' +
+        '  diffuseColor.rgb *= mix( vColor, vec3( 1.0 ), vReveal );\n' +
+        '#endif');
+  };
+
+  // 四批的注入程式碼完全相同，給同一組快取鍵就能共用編譯好的 program
+  material.customProgramCacheKey = () => 'mosaic-atlas';
+  return material;
 }
 
 /* =========================================================================
@@ -579,13 +722,14 @@ function sampleImage(source, grid) {
    ------------------------------------------------------------------------
    【效能關鍵】每個方塊若各自是一個 Mesh，6 × 30² = 5400 個方塊就是 5400 次
    draw call，再加上陰影等於上萬次，實測只剩個位數 fps。
-   這裡改成依「用哪一張小圖」把方塊分成 48 批，每批一個 InstancedMesh：
-   整個立方體不論幾格都只畫 48 批，每格的顏色改用 per-instance 的
-   instanceColor 帶進去，視覺完全一樣但 draw call 少了兩個數量級。
+   這裡改成依「用哪一張圖集」把方塊分成 4 批，每批一個 InstancedMesh：
+   整個立方體不論幾格都只畫 4 批。每一格的顏色走 per-instance 的 instanceColor，
+   要用圖集裡的哪一張小照片則走 per-instance 的 aAtlasOffset，
+   視覺上每格各有自己的照片，但 draw call 少了三個數量級。
    ========================================================================= */
-let batches = [];               // 48 個 InstancedMesh（依貼圖分批）
+let batches = [];               // 4 個 InstancedMesh（依圖集分批）
 let tileData = [];              // 每一格的資料，波浪與推進都靠它
-let sharedGeometry = null;      // 所有方塊共用同一份 geometry
+let baseGeometry = null;        // 方塊本體的 geometry，各批再各自 clone 一份掛 instance 屬性
 
 const state = {
   grid: CONFIG.GRID,
@@ -600,18 +744,23 @@ const state = {
 /** 徹底清除上一個立方體，並釋放 GPU 資源 */
 function clearMosaic() {
   focused = null;               // 舊的方塊即將被移除，不能再被相機鎖定
+  hideCloseup();
+
+  // 這些格子上可能還有還原／翻轉的補間在跑，不先停掉會寫進已經釋放的緩衝區
+  for (const d of tileData) gsap.killTweensOf(d);
 
   for (const batch of batches) {
     scene.remove(batch);
-    batch.material.dispose();   // 貼圖是共用的，只丟材質不丟貼圖
+    batch.geometry.dispose();   // 每一批有自己 clone 的 geometry（掛了 instance 屬性）
+    batch.material.dispose();   // 圖集是共用的，只丟材質不丟貼圖
     batch.dispose();            // 釋放 instance 緩衝區
   }
   batches = [];
   tileData = [];
 
-  if (sharedGeometry) {
-    sharedGeometry.dispose();
-    sharedGeometry = null;
+  if (baseGeometry) {
+    baseGeometry.dispose();
+    baseGeometry = null;
   }
 }
 
@@ -631,7 +780,7 @@ function buildMosaic() {
   state.spacing = spacing;
   state.tileSize = tileSize;
 
-  sharedGeometry = new THREE.BoxGeometry(tileSize, tileSize, depth);
+  baseGeometry = new THREE.BoxGeometry(tileSize, tileSize, depth);
 
   const half = CONFIG.CUBE_SIZE / 2;
   const first = -(grid - 1) * spacing / 2;   // 第一格的中心座標（面內本地座標）
@@ -649,8 +798,10 @@ function buildMosaic() {
     state.faceMats.push(new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(1, 1, 1)));
   }
 
-  // 第一輪：決定每一格的顏色與要用哪一張小圖，先依貼圖分堆
-  const buckets = Array.from({ length: CONFIG.TEXTURE_POOL }, () => []);
+  /* 第一輪：決定每一格的顏色與它用圖集裡的哪一張小照片。
+     小照片從 256 張裡隨機挑，再依「落在哪一張圖集」分堆——
+     分堆的依據是圖集而不是個別小圖，所以只會有 4 堆。 */
+  const buckets = Array.from({ length: CONFIG.ATLAS_COUNT }, () => []);
 
   FACES.forEach((face, fi) => {
     const source = state.sources[fi % state.sources.length];
@@ -659,7 +810,7 @@ function buildMosaic() {
     for (let y = 0; y < grid; y++) {
       for (let x = 0; x < grid; x++) {
         const c = colors[y * grid + x];
-        const texIndex = Math.floor(Math.random() * CONFIG.TEXTURE_POOL);
+        const photo = Math.floor(Math.random() * PHOTO_COUNT);
 
         const d = {
           face: fi,
@@ -669,37 +820,44 @@ function buildMosaic() {
           phase: (x + y) * 0.35,         // 斜向波浪的相位差
           // 顏色直接取自照片中對應網格點的 RGB
           color: new THREE.Color().setStyle(`rgb(${c.r}, ${c.g}, ${c.b})`),
+          photo,                         // 這一格用第幾張小照片
+          uv: photoUvOffset(photo),      // 它在圖集裡的位置
           spin: 0,                       // 翻轉角度
+          reveal: 0,                     // 0 = 參與大圖，1 = 還原成原始照片
           flipping: false,
           isFocused: false,
           batch: null,
           id: 0
         };
 
-        buckets[texIndex].push(d);
+        buckets[photoSlot(photo).atlas].push(d);
         tileData.push(d);
       }
     }
   });
 
-  // 第二輪：每一堆做成一個 InstancedMesh
-  buckets.forEach((bucket, texIndex) => {
+  // 第二輪：每一堆（= 一張圖集）做成一個 InstancedMesh
+  buckets.forEach((bucket, atlasIndex) => {
     if (bucket.length === 0) return;
 
-    const material = new THREE.MeshStandardMaterial({
-      // 這裡的 color 保持白色，真正的顏色走 per-instance 的 instanceColor，
-      // 貼圖則與它相乘混色：遠看是整張大圖，近看每一格都是一張獨立的小照片
-      map: texturePool[texIndex],
-      roughness: 0.55,
-      metalness: 0.05
+    // geometry 要各自 clone，因為 instance 屬性是掛在 geometry 上的
+    const geometry = baseGeometry.clone();
+    const offsets = new Float32Array(bucket.length * 2);
+    const reveals = new Float32Array(bucket.length);
+
+    bucket.forEach((d, i) => {
+      offsets[i * 2] = d.uv[0];
+      offsets[i * 2 + 1] = d.uv[1];
     });
 
-    const mesh = new THREE.InstancedMesh(sharedGeometry, material, bucket.length);
+    geometry.setAttribute('aAtlasOffset', new THREE.InstancedBufferAttribute(offsets, 2));
+    geometry.setAttribute('aReveal', new THREE.InstancedBufferAttribute(reveals, 1));
+
+    const mesh = new THREE.InstancedMesh(geometry, makeTileMaterial(atlases[atlasIndex]), bucket.length);
     mesh.castShadow = true;        // 投影到內核上
     mesh.receiveShadow = false;    // 同一面的方塊幾乎共面，接收陰影只會產生雜訊
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);   // 每幀都會更新
     mesh.frustumCulled = false;    // 一批橫跨六個面，交給 three 自動剔除反而會誤判
-    mesh.userData.texIndex = texIndex;
 
     bucket.forEach((d, i) => {
       d.batch = mesh;
@@ -727,11 +885,30 @@ function buildMosaic() {
   setStatus(describeState());
 }
 
-/** 面板上的狀態文字 */
+/* 上一次上傳的統計，狀態列就靠它說清楚到底成功了幾張 */
+const upload = { found: 0, used: 0, failed: 0, dupes: 0, overflow: 0 };
+
+/** 立方體本身的規格 */
+function cubeInfo() {
+  return `六面各 ${state.grid} × ${state.grid}，共 ${state.grid * state.grid * 6} 格`;
+}
+
+/** 進行中的狀態文字 */
 function describeState() {
-  const perFace = state.grid * state.grid;
-  const photos = state.photoCount > 0 ? `${state.photoCount} 張照片` : '預設漸層';
-  return `${photos} · 六面各 ${state.grid} × ${state.grid}，共 ${perFace * 6} 格`;
+  const photos = state.photoCount > 0
+    ? `你的 ${state.photoCount} 張照片`
+    : '預設漸層 · picsum 小圖';
+  return `${photos} · ${cubeInfo()}`;
+}
+
+/** 全部處理完之後的結論：說清楚新增幾張、略過幾張、為什麼略過 */
+function describeDone() {
+  const notes = [];
+  if (upload.dupes > 0) notes.push(`${upload.dupes} 張重複`);
+  if (upload.failed > 0) notes.push(`${upload.failed} 張讀不出來`);
+  if (upload.overflow > 0) notes.push(`${upload.overflow} 張超過 ${PHOTO_COUNT} 張上限`);
+  const skipped = notes.length ? `，略過 ${notes.join('、')}` : '';
+  return `✓ 新增 ${upload.used} 張${skipped} · 圖庫共 ${libraryFiles.length} 張 · ${cubeInfo()}`;
 }
 
 /* =========================================================================
@@ -767,6 +944,9 @@ function makeDefaultImage(hueShift) {
 
   return c;
 }
+
+// 六面的預設漸層只做一次，清除照片時直接拿回來用
+const defaultSources = [0, 60, 120, 180, 240, 300].map(makeDefaultImage);
 
 /* =========================================================================
    8. 每幀更新所有方塊的位置（波浪 + 翻轉）
@@ -820,11 +1000,104 @@ const _normal = new THREE.Vector3();
 const _faceUp = new THREE.Vector3();
 
 /** 相機飛回 home 記錄的視角，並把旋轉控制權交還給使用者 */
+/* -------------------------------------------------------------------------
+   近看用的高解析覆蓋片。
+   圖集裡每張小圖只有 ATLAS_CELL 像素，放大到整個畫面一定是糊的。
+   所以推進並翻轉完成後，再去抓同一張照片的高解析版本，
+   貼在那一格的表面上淡入——近看才是真的清晰。
+   抓不到（例如離線）就維持圖集那一張，其他功能完全不受影響。
+   ------------------------------------------------------------------------- */
+const closeup = new THREE.Mesh(
+  new THREE.PlaneGeometry(1, 1),
+  // 用不受光的材質，看到的就是照片本來的顏色，不會再被場景燈光改變
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, toneMapped: false })
+);
+closeup.visible = false;
+scene.add(closeup);
+
+const _closeupPos = new THREE.Vector3();
+let closeupToken = 0;   // 連續點不同格時，用它作廢上一次還沒回來的載入
+
+function hideCloseup() {
+  closeupToken++;
+  gsap.killTweensOf(closeup.material);
+  closeup.visible = false;
+  closeup.material.opacity = 0;
+  if (closeup.material.map) {
+    closeup.material.map.dispose();
+    closeup.material.map = null;
+  }
+}
+
+function showCloseup(d) {
+  hideCloseup();
+  const token = closeupToken;
+
+  // 貼在這一格朝外那一面的正前方（再往外一點點，避免和方塊表面打架）
+  const depth = state.spacing * CONFIG.TILE_DEPTH;
+  _closeupPos.set(d.lx, d.ly, d.baseZ + depth / 2 + 0.004).applyMatrix4(state.faceMats[d.face]);
+  closeup.position.copy(_closeupPos);
+  closeup.quaternion.copy(state.faceQuats[d.face]);
+  closeup.scale.set(state.tileSize, state.tileSize, 1);
+
+  const img = new Image();
+  let objectUrl = null;
+
+  img.onload = () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    if (token !== closeupToken) return;     // 已經換目標了，這張作廢
+
+    // 畫進固定大小的正方形 canvas：順便置中裁切成和方塊一樣的比例，
+    // 也避免一張幾千萬像素的原圖直接變成貼圖
+    const size = CONFIG.CLOSEUP_SIZE;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    drawCoverSquare(c.getContext('2d'), img, 0, 0, size);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    closeup.material.map = tex;
+    closeup.material.needsUpdate = true;
+    closeup.visible = true;
+    gsap.to(closeup.material, { opacity: 1, duration: 0.45, ease: 'power2.out' });
+  };
+  img.onerror = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+
+  if (libraryFiles.length > 0) {
+    // 使用者自己的照片：直接讀原始檔案，不必上網，解析度也是原圖等級
+    objectUrl = URL.createObjectURL(libraryFiles[d.photo % libraryFiles.length]);
+    img.src = objectUrl;
+  } else {
+    img.crossOrigin = 'anonymous';
+    img.src = `https://picsum.photos/seed/mosaic${d.photo + 1}/${CONFIG.CLOSEUP_SIZE}/${CONFIG.CLOSEUP_SIZE}`;
+  }
+}
+
+/** 把某一格的 aReveal 寫進它那一批的 instance 屬性 */
+function writeReveal(d) {
+  const attr = d.batch.geometry.attributes.aReveal;
+  attr.array[d.id] = d.reveal;
+  attr.needsUpdate = true;
+}
+
+/** 讓某一格在 duration 秒內淡向「原始照片」(1) 或「參與大圖」(0) */
+function tweenReveal(d, to, duration = CONFIG.REVEAL_TIME) {
+  gsap.killTweensOf(d, 'reveal');
+  gsap.to(d, {
+    reveal: to,
+    duration,
+    ease: 'power2.out',
+    onUpdate: () => writeReveal(d)
+  });
+}
+
 function resetCamera(duration = 1.25) {
   if (focused) {
     focused.isFocused = false;
+    tweenReveal(focused, 0);      // 淡回洗白＋染色，重新成為大圖的一部分
     focused = null;
   }
+  hideCloseup();
   cameraLocked = true;
 
   gsap.killTweensOf(camera.position);
@@ -858,6 +1131,7 @@ function resetCamera(duration = 1.25) {
 function focusTile(d) {
   if (focused) {
     focused.isFocused = false;    // 在推進狀態下又點了別格
+    tweenReveal(focused, 0);      // 前一格淡回大圖
   } else {
     // 第一次從全景推進：記住現在的視角，退回時才找得回來
     home.pos.copy(camera.position);
@@ -866,6 +1140,7 @@ function focusTile(d) {
 
   focused = d;
   d.isFocused = true;
+  hideCloseup();      // 上一格的高解析覆蓋片立刻收掉
 
   // 推進期間停用軌道控制與自動轉動，相機完全交給 GSAP
   controls.enabled = false;
@@ -887,7 +1162,10 @@ function focusTile(d) {
   gsap.killTweensOf(camera.position);
   gsap.killTweensOf(controls.target);
   gsap.killTweensOf(camera.up);
-  gsap.killTweensOf(d);
+  gsap.killTweensOf(d, 'spin');
+
+  // 相機飛過來的同時，這一格淡掉洗白與染色，露出小照片本來的樣子
+  tweenReveal(d, 1);
 
   gsap.to(camera.position, {
     x: _worldPos.x + _normal.x * dist,
@@ -916,6 +1194,7 @@ function focusTile(d) {
     onComplete: () => {
       d.spin = 0;
       d.flipping = false;
+      showCloseup(d);     // 翻轉結束、方塊擺正後再換上高解析版本
     }
   });
 
@@ -985,10 +1264,17 @@ const hint = document.querySelector('#hint');
 const gridInput = document.querySelector('#grid');
 const gridVal = document.querySelector('#gridVal');
 const fileInput = document.querySelector('#file');
+const dirInput = document.querySelector('#dir');
 const dropzone = document.querySelector('#dropzone');
 const backBtn = document.querySelector('#back');
+const clearBtn = document.querySelector('#clear');
 
-function setStatus(text) { statusEl.textContent = text; }
+clearBtn.addEventListener('click', clearPhotos);
+
+function setStatus(text, ok = false) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle('ok', ok);
+}
 
 // 退回全景：按鈕與 Esc 鍵（點擊黑色背景一樣有效，在 canvas 的 pointerup 裡處理）
 backBtn.addEventListener('click', () => resetCamera());
@@ -996,47 +1282,268 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && focused) resetCamera();
 });
 
-/** 讀取使用者選的檔案：最多取前六張，依序貼到六個面 */
-function loadFiles(fileList) {
-  const picked = Array.from(fileList || [])
-    .filter(f => f.type.startsWith('image/'))
-    .slice(0, CONFIG.MAX_PHOTOS);
+/* -------------------------------------------------------------------------
+   讀取使用者的照片。
+   其中 6 張貼到六個面，全部照片填進圖集成為每一格的小圖，
+   近看的高解析版本也直接讀原始檔案——整段流程不需要任何網路請求，
+   照片一樣只存在瀏覽器記憶體裡。
+   ------------------------------------------------------------------------- */
+let libraryFiles = [];           // 已累積的照片（最多 PHOTO_COUNT 張）
+const libraryKeys = new Set();   // 已收錄照片的指紋，用來排除重複
+const MAX_SCAN = 5000;           // 掃描資料夾時的保險上限，避免誤丟整顆硬碟
 
-  if (picked.length === 0) {
-    setStatus('請選擇圖片檔');
+/** 把一張圖置中裁成正方形後畫進指定方格 */
+function drawCoverSquare(ctx, source, x, y, size) {
+  const sw = source.naturalWidth || source.width;
+  const sh = source.naturalHeight || source.height;
+  const side = Math.min(sw, sh);
+  ctx.drawImage(source, (sw - side) / 2, (sh - side) / 2, side, side, x, y, size, size);
+}
+
+/** 解碼一個圖片檔。優先用 createImageBitmap（省記憶體、可即時釋放） */
+async function decodeImage(file) {
+  try {
+    return await createImageBitmap(file);
+  } catch (e) {
+    return await new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+}
+
+/* -------------------------------------------------------------------------
+   排除重複。
+   比對的是「內容」而不是檔名：檔案大小 + 開頭 64KB 的雜湊，
+   所以同一張照片被複製成別的檔名也抓得到。
+   雜湊用純 JS 的 FNV-1a 自己算，不依賴 crypto.subtle——
+   那東西在非安全上下文（例如 data: 或某些內嵌情境）根本不存在。
+   ------------------------------------------------------------------------- */
+function hashBytes(bytes) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i];
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+}
+
+async function fingerprint(file) {
+  try {
+    const head = await file.slice(0, 65536).arrayBuffer();
+    return `${file.size}:${hashBytes(new Uint8Array(head))}`;
+  } catch (e) {
+    // 連內容都讀不到就退回檔名規則，至少擋掉「同一個檔案選兩次」
+    return `${file.size}:${file.name}:${file.lastModified}`;
+  }
+}
+
+/** 算出每個檔案的指紋，濾掉已經在圖庫裡的（也濾掉同一批內部的重複） */
+async function dedupe(files, token) {
+  const fresh = [];
+  let dupes = 0;
+  const CHUNK = 16;
+
+  for (let i = 0; i < files.length; i += CHUNK) {
+    if (token !== atlasToken) break;
+    const chunk = files.slice(i, i + CHUNK);
+    const keys = await Promise.all(chunk.map(fingerprint));
+
+    for (let j = 0; j < chunk.length; j++) {
+      if (libraryKeys.has(keys[j])) { dupes++; continue; }
+      libraryKeys.add(keys[j]);
+      fresh.push({ file: chunk[j], key: keys[j] });
+    }
+
+    if (files.length > 200) {
+      setStatus(`比對重複 ${Math.min(i + CHUNK, files.length)} / ${files.length}…`);
+    }
+  }
+
+  return { fresh, dupes };
+}
+
+/**
+ * 把新照片解碼並畫進圖集。
+ * 每次只解碼一小批，解完立刻釋放，記憶體不會隨照片數成長。
+ * 成功的才會進圖庫，所以索引永遠對得上；失敗或超出上限的把指紋撤銷，
+ * 下次重新上傳同一張還會再試一次。
+ */
+async function ingest(fresh, token) {
+  const s = CONFIG.ATLAS_CELL;
+  const CHUNK = 8;
+
+  for (let i = 0; i < fresh.length; i += CHUNK) {
+    if (token !== atlasToken) return;
+
+    const chunk = fresh.slice(i, i + CHUNK);
+    const decoded = await Promise.all(chunk.map(it => decodeImage(it.file)));
+    if (token !== atlasToken) {
+      decoded.forEach(b => { if (b && b.close) b.close(); });
+      return;
+    }
+
+    for (let j = 0; j < chunk.length; j++) {
+      const bmp = decoded[j];
+
+      if (!bmp) {                               // 壞檔或不支援的格式
+        libraryKeys.delete(chunk[j].key);
+        upload.failed++;
+        continue;
+      }
+      if (libraryFiles.length >= PHOTO_COUNT) { // 圖庫滿了
+        if (bmp.close) bmp.close();
+        libraryKeys.delete(chunk[j].key);
+        upload.overflow++;
+        continue;
+      }
+
+      const k = libraryFiles.length;
+      libraryFiles.push(chunk[j].file);
+      const { atlas, col, row } = photoSlot(k);
+      drawCoverSquare(atlases[atlas].ctx, bmp, col * s, row * s, s);
+      atlases[atlas].texture.needsUpdate = true;
+      if (bmp.close) bmp.close();
+      upload.used++;
+    }
+
+    setStatus(`讀取照片 ${Math.min(i + CHUNK, fresh.length)} / ${fresh.length}…`);
+  }
+
+  padCells(libraryFiles.length);   // 其餘格子用已收錄的照片循環複製填滿
+}
+
+/** 入口：拿到一批圖片檔之後的完整流程 */
+async function loadImages(fileList) {
+  const all = Array.from(fileList || []).filter(f => f.type.startsWith('image/'));
+  if (all.length === 0) {
+    setStatus('沒有找到圖片檔');
     return;
   }
 
-  setStatus(`讀取 ${picked.length} 張照片中…`);
+  atlasToken++;              // 作廢還在進行中的 picsum 或上一批照片的填圖
+  const token = atlasToken;
 
-  // 每個檔案各自 FileReader → Image，全部就緒後一次重建
-  const jobs = picked.map(file => new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);   // 單張解不開就跳過，不要卡住其他張
-      img.src = reader.result;
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  }));
+  upload.found = all.length;
+  upload.used = 0;
+  upload.failed = 0;
+  upload.dupes = 0;
+  upload.overflow = 0;
 
-  Promise.all(jobs).then(images => {
-    const ok = images.filter(Boolean);
-    if (ok.length === 0) {
-      setStatus('這些圖片都無法解碼');
+  /* 一律先洗牌。超過上限時才不會只拿到資料夾前段的照片，
+     六個面也因此是隨機的六張。 */
+  const shuffled = all.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  setStatus(`找到 ${all.length} 張照片，比對重複…`);
+  const { fresh, dupes } = await dedupe(shuffled, token);
+  if (token !== atlasToken) return;
+  upload.dupes = dupes;
+
+  if (fresh.length === 0) {
+    setStatus(`這 ${all.length} 張都已經在圖庫裡了`, true);
+    return;
+  }
+
+  /* 六個面只在圖庫原本是空的時候決定，之後的上傳只補小圖——
+     否則每加幾張照片就把使用者看到的大圖整個換掉，太突然。
+     想換面就按清除再重新上傳。 */
+  const firstBatch = libraryFiles.length === 0;
+
+  if (firstBatch) {
+    const faces = [];
+    for (let i = 0; i < Math.min(CONFIG.MAX_PHOTOS, fresh.length); i++) {
+      const bmp = await decodeImage(fresh[i].file);
+      if (!bmp) continue;
+      // 縮成 512px 的正方形 canvas 留著，這樣調整解析度滑桿時可以重新取樣，
+      // 又不必讓整張原圖一直佔記憶體
+      const c = document.createElement('canvas');
+      c.width = c.height = 512;
+      drawCoverSquare(c.getContext('2d'), bmp, 0, 0, 512);
+      if (bmp.close) bmp.close();
+      faces.push(c);
+    }
+    if (token !== atlasToken) return;
+    if (faces.length > 0) {
+      state.sources = faces;
+      buildMosaic();          // 先把六個面換上去，圖集再慢慢填
+    }
+  }
+
+  await ingest(fresh, token);
+  if (token !== atlasToken) return;
+
+  state.photoCount = libraryFiles.length;
+  setStatus(describeDone(), true);
+}
+
+/** 清除：丟掉所有上傳的照片，回到開啟網頁時的預設畫面 */
+function clearPhotos() {
+  atlasToken++;              // 停掉所有還在進行中的填圖
+  libraryFiles = [];
+  libraryKeys.clear();
+  upload.found = upload.used = upload.failed = upload.dupes = upload.overflow = 0;
+
+  hideCloseup();
+  drawProceduralCells();     // 圖集先回到程序圖樣
+  state.sources = defaultSources;
+  state.photoCount = 0;
+  buildMosaic();
+  loadPhotoTextures();       // 再把 picsum 的預設小圖抓回來
+  setStatus('已清除，回到預設畫面');
+}
+
+/** 從拖放內容取出所有圖片檔，含資料夾（可遞迴數層） */
+function filesFromDataTransfer(dt) {
+  // webkitGetAsEntry 必須在任何 await 之前同步取得，事件結束後 items 就失效了
+  const entries = dt.items
+    ? Array.from(dt.items).map(it => (it.webkitGetAsEntry ? it.webkitGetAsEntry() : null)).filter(Boolean)
+    : [];
+
+  if (entries.length === 0) return Promise.resolve(Array.from(dt.files || []));
+
+  const out = [];
+
+  async function walk(entry, depth) {
+    if (out.length >= MAX_SCAN) return;
+
+    if (entry.isFile) {
+      const file = await new Promise(res => entry.file(res, () => res(null)));
+      if (file && file.type.startsWith('image/')) out.push(file);
       return;
     }
-    state.sources = ok;          // 不足六張時 buildMosaic 會循環取用
-    state.photoCount = ok.length;
-    buildMosaic();
-  });
+
+    if (entry.isDirectory && depth < 5) {
+      const reader = entry.createReader();
+      // readEntries 一次最多回 100 筆，要一直讀到回空陣列為止
+      while (out.length < MAX_SCAN) {
+        const batch = await new Promise(res => reader.readEntries(res, () => res([])));
+        if (batch.length === 0) break;
+        for (const e of batch) await walk(e, depth + 1);
+      }
+    }
+  }
+
+  return (async () => {
+    for (const e of entries) await walk(e, 0);
+    return out;
+  })();
 }
 
 fileInput.addEventListener('change', (e) => {
-  loadFiles(e.target.files);
+  loadImages(e.target.files);
   e.target.value = '';   // 清空，讓同一批檔案可以重複選
+});
+
+dirInput.addEventListener('change', (e) => {
+  loadImages(e.target.files);
+  e.target.value = '';
 });
 
 // 解析度滑桿：放開後才重建，避免拖曳過程中瘋狂重算
@@ -1054,7 +1561,8 @@ window.addEventListener('dragleave', (e) => { if (e.target === document.document
 window.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('on');
-  loadFiles(e.dataTransfer.files);
+  setStatus('掃描拖進來的內容…');
+  filesFromDataTransfer(e.dataTransfer).then(loadImages);
 });
 
 /** 把 pos 沿著「target → pos」的方向重新擺到指定距離（方向不變，只改遠近） */
@@ -1080,7 +1588,14 @@ function applyViewportSize() {
 
   setDistanceFrom(home.pos, home.target, want);
 
-  if (!focused) {
+  if (focused) {
+    // 推進中：只更新 home，等退回全景時自然就會用到新的距離
+  } else if (cameraLocked) {
+    /* 正在飛回全景的途中。GSAP 的補間在「建立當下」就把目標值抄走了，
+       所以光改 home.pos 沒用，會被原本那條補間拉回舊位置；
+       直接用新的 home 重新發動一次退回。 */
+    resetCamera(0.35);
+  } else {
     setDistanceFrom(camera.position, controls.target, want);
     controls.update();
   }
@@ -1091,8 +1606,8 @@ window.addEventListener('resize', applyViewportSize);
 /* =========================================================================
    12. 啟動
    ========================================================================= */
-// 六個面各給一張色相不同的預設漸層
-state.sources = [0, 60, 120, 180, 240, 300].map(makeDefaultImage);
+// 六個面各給一張色相不同的預設漸層。留著一份，按「清除照片」時要用
+state.sources = defaultSources;
 buildMosaic();
 
 /* 只靠 window 的 resize 事件是不夠的：

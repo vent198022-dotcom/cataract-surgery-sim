@@ -24,6 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+
+      # 照片馬賽克立方體是獨立的示範頁，原始檔放在 repo 根目錄的「照片」資料夾。
+      # 這裡只在建置當下把它複製進要發佈的資料夾，repo 裡的檔案位置不動；
+      # 複製成純英文的 photo-mosaic，網址才不會變成一串百分號編碼。
+      - name: Include the photo mosaic demo
+        run: cp -r "照片" "白內障手術模擬/photo-mosaic"
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: 白內障手術模擬
